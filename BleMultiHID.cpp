@@ -1,15 +1,15 @@
 #include <NimBLEDevice.h>
 #include <NimBLEUtils.h>
 #include <NimBLEServer.h>
-#include "NimBLEHIDDevice.h"
-#include "HIDTypes.h"
-#include "HIDKeyboardTypes.h"
+#include <NimBLEHIDDevice.h>
+#include <HIDTypes.h>
+#include <HIDKeyboardTypes.h>
 #include <driver/adc.h>
 #include "sdkconfig.h"
 
 #include "BleConnectionStatus.h"
-#include "BleGamepad.h"
-#include "BleGamepadConfiguration.h"
+#include "BleMultiHID.h"
+#include "BleMultiHIDConfiguration.h"
 
 #if defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -31,7 +31,9 @@ static const char *LOG_TAG = "BLEGamepad";
 uint8_t tempHidReportDescriptor[150];
 int hidReportDescriptorSize = 0;
 uint8_t reportSize = 0;
+uint8_t mouseReportSize = 0;
 uint8_t numOfButtonBytes = 0;
+uint8_t numOfMouseButtonBytes = 0;
 uint16_t vid;
 uint16_t pid;
 uint16_t guidVersion;
@@ -45,7 +47,7 @@ std::string serialNumber;
 std::string firmwareRevision;
 std::string hardwareRevision;
 
-BleGamepad::BleGamepad(std::string deviceName, std::string deviceManufacturer, uint8_t batteryLevel) : _buttons(),
+BleMultiHID::BleMultiHID(std::string deviceName, std::string deviceManufacturer, uint8_t batteryLevel) : _buttons(),
                                                                                                        _specialButtons(0),
                                                                                                        _x(0),
                                                                                                        _y(0),
@@ -64,7 +66,12 @@ BleGamepad::BleGamepad(std::string deviceName, std::string deviceManufacturer, u
                                                                                                        _hat2(0),
                                                                                                        _hat3(0),
                                                                                                        _hat4(0),
-                                                                                                       hid(0)
+                                                                                                       hid(0),
+                                                                                                       _mouseButtons(),
+                                                                                                       _mouseX(0),
+                                                                                                       _mouseY(0),
+                                                                                                       _mouseWheel(0),
+                                                                                                       _mouseHWheel(0)
 {
     this->resetButtons();
     this->deviceName = deviceName;
@@ -73,12 +80,13 @@ BleGamepad::BleGamepad(std::string deviceName, std::string deviceManufacturer, u
     this->connectionStatus = new BleConnectionStatus();
 }
 
-void BleGamepad::resetButtons()
+void BleMultiHID::resetButtons()
 {
     memset(&_buttons, 0, sizeof(_buttons));
+    memset(&_mouseButtons, 0, sizeof(_mouseButtons));
 }
 
-void BleGamepad::begin(BleGamepadConfiguration *config)
+void BleMultiHID::begin(BleMultiHIDConfiguration *config)
 {
     configuration = *config; // we make a copy, so the user can't change actual values midway through operation, without calling the begin function again
 
@@ -116,6 +124,13 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
     {
         specialButtonPaddingBits = 0;
     }
+
+    uint8_t mouseButtonPaddingBits = 8 - (5 % 8);
+    if (mouseButtonPaddingBits == 8)
+    {
+        mouseButtonPaddingBits = 0;
+    }
+
     uint8_t numOfAxisBytes = configuration.getAxisCount() * 2;
     uint8_t numOfSimulationBytes = configuration.getSimulationCount() * 2;
 
@@ -131,72 +146,89 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         numOfSpecialButtonBytes++;
     }
 
+    // TODO: Make number of mouse buttons dynamic
+    numOfMouseButtonBytes = configuration.getMouseButtonCount() / 8; // 5 hardcoded buttons for testing
+    if (mouseButtonPaddingBits > 0)
+    {
+        numOfMouseButtonBytes++;
+    }
+
+    // TODO: Make number of mouse axis' dynamic? 
+    uint8_t numOfMouseAxisBytes = configuration.getMouseAxisCount(); //X, Y, Wheel, Horiz wheel;
+
+    // Gamepad report size (bytes)
     reportSize = numOfButtonBytes + numOfSpecialButtonBytes + numOfAxisBytes + numOfSimulationBytes + configuration.getHatSwitchCount();
+    Serial.printf("Report size: %d\n", reportSize);
+
+    // Mouse report size (bytes)
+    mouseReportSize = numOfMouseButtonBytes + numOfMouseAxisBytes;
+    Serial.printf("Mouse report size: %d\n", mouseReportSize);
+
+    // Report description START -------------------------------------------------
 
     // USAGE_PAGE (Generic Desktop)
-    tempHidReportDescriptor[hidReportDescriptorSize++] = 0x05;
-    tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
+    tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1); //0x05;
+    tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; //Generic Desktop
 
     // USAGE (Joystick - 0x04; Gamepad - 0x05; Multi-axis Controller - 0x08)
-    tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+    tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
     tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getControllerType();
 
     // COLLECTION (Application)
-    tempHidReportDescriptor[hidReportDescriptorSize++] = 0xa1;
+    tempHidReportDescriptor[hidReportDescriptorSize++] = COLLECTION(1); //0xa1;
     tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
-    // REPORT_ID (Default: 3)
-    tempHidReportDescriptor[hidReportDescriptorSize++] = 0x85;
-    tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getHidReportId();
+    // REPORT_ID (Gamepad)
+    tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_ID(1);
+    tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getGamepadHidReportId();
 
     if (configuration.getButtonCount() > 0)
     {
-
         // USAGE_PAGE (Button)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x05;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1); //0x05;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
 
         // LOGICAL_MINIMUM (0)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x15;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(1);//0x15;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;
 
         // LOGICAL_MAXIMUM (1)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x25;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(1); //0x25;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         // REPORT_SIZE (1)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x75;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1); //0x75;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         // USAGE_MINIMUM (Button 1)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x19;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_MINIMUM(1);//0x19;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         // USAGE_MAXIMUM (Up to 128 buttons possible)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x29;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_MAXIMUM(1);//0x29;
         tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getButtonCount();
 
         // REPORT_COUNT (# of buttons)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
         tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getButtonCount();
 
         // INPUT (Data,Var,Abs)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1); //0x81;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
 
         if (buttonPaddingBits > 0)
         {
 
             // REPORT_SIZE (1)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x75;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1); //0x75;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
             // REPORT_COUNT (# of padding bits)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
             tempHidReportDescriptor[hidReportDescriptorSize++] = buttonPaddingBits;
 
             // INPUT (Const,Var,Abs)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+            tempHidReportDescriptor[hidReportDescriptorSize++] =  HIDINPUT(1); //0x81;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x03;
 
         } // Padding Bits Needed
@@ -206,50 +238,50 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
     if (configuration.getTotalSpecialButtonCount() > 0)
     {
         // LOGICAL_MINIMUM (0)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x15;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(1); //0x15;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;
 
         // LOGICAL_MAXIMUM (1)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x25;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(1); //;0x25;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         // REPORT_SIZE (1)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x75;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1); //0x75;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         if (configuration.getDesktopSpecialButtonCount() > 0)
         {
 
             // USAGE_PAGE (Generic Desktop)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x05;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1); // 0x05;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
             // REPORT_COUNT
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
             tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getDesktopSpecialButtonCount();
             if (configuration.getIncludeStart())
             {
                 // USAGE (Start)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0x3D;
             }
 
             if (configuration.getIncludeSelect())
             {
                 // USAGE (Select)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0x3E;
             }
 
             if (configuration.getIncludeMenu())
             {
                 // USAGE (App Menu)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0x86;
             }
 
             // INPUT (Data,Var,Abs)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1); //0x81;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
         }
 
@@ -257,52 +289,52 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         {
 
             // USAGE_PAGE (Consumer Page)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x05;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1); //0x05;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x0C;
 
             // REPORT_COUNT
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
             tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getConsumerSpecialButtonCount();
 
             if (configuration.getIncludeHome())
             {
                 // USAGE (Home)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x0A;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(2); //0x0A;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0x23;
-		            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
             }
 
             if (configuration.getIncludeBack())
             {
                 // USAGE (Back)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x0A;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(2); //0x0A;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0x24;
-	        	    tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
             }
 
             if (configuration.getIncludeVolumeInc())
             {
                 // USAGE (Volume Increment)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+                tempHidReportDescriptor[hidReportDescriptorSize++] =  USAGE(1); //0x09;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0xE9;
             }
 
             if (configuration.getIncludeVolumeDec())
             {
                 // USAGE (Volume Decrement)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0xEA;
             }
 
             if (configuration.getIncludeVolumeMute())
             {
                 // USAGE (Mute)
-                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+                tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
                 tempHidReportDescriptor[hidReportDescriptorSize++] = 0xE2;
             }
 
             // INPUT (Data,Var,Abs)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1); //0x81;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
         }
 
@@ -310,15 +342,15 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         {
 
             // REPORT_SIZE (1)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x75;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1); //0x75;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
             // REPORT_COUNT (# of padding bits)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
             tempHidReportDescriptor[hidReportDescriptorSize++] = specialButtonPaddingBits;
 
             // INPUT (Const,Var,Abs)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1); //0x81;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x03;
 
         } // Padding Bits Needed
@@ -328,15 +360,15 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
     if (configuration.getAxisCount() > 0)
     {
         // USAGE_PAGE (Generic Desktop)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x05;
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1); 0x05;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; // Generic desktop controls
 
         // USAGE (Pointer)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         // LOGICAL_MINIMUM (-32767)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x16;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(2); //0x16;
         tempHidReportDescriptor[hidReportDescriptorSize++] = lowByte(configuration.getAxesMin());
         tempHidReportDescriptor[hidReportDescriptorSize++] = highByte(configuration.getAxesMin());
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;		// Use these two lines for 0 min
@@ -345,7 +377,7 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0x80;
 
         // LOGICAL_MAXIMUM (+32767)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x26;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(2);//0x26;
         tempHidReportDescriptor[hidReportDescriptorSize++] = lowByte(configuration.getAxesMax());
         tempHidReportDescriptor[hidReportDescriptorSize++] = highByte(configuration.getAxesMax());
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0xFF;	// Use these two lines for 255 max
@@ -354,91 +386,90 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0x7F;
 
         // REPORT_SIZE (16)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x75;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1); //0x75;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x10;
 
         // REPORT_COUNT (configuration.getAxisCount())
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
         tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getAxisCount();
 
         // COLLECTION (Physical)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0xA1;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = COLLECTION(1); //0xA1;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;
 
         if (configuration.getIncludeXAxis())
         {
             // USAGE (X)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x30;
         }
 
         if (configuration.getIncludeYAxis())
         {
             // USAGE (Y)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x31;
         }
 
         if (configuration.getIncludeZAxis())
         {
             // USAGE (Z)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x32;
         }
 
         if (configuration.getIncludeRzAxis())
         {
             // USAGE (Rz)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x35;
         }
 
         if (configuration.getIncludeRxAxis())
         {
             // USAGE (Rx)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x33;
         }
 
         if (configuration.getIncludeRyAxis())
         {
             // USAGE (Ry)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x34;
         }
 
         if (configuration.getIncludeSlider1())
         {
             // USAGE (Slider)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x36;
         }
 
         if (configuration.getIncludeSlider2())
         {
             // USAGE (Slider)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0x36;
         }
 
         // INPUT (Data,Var,Abs)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1); //0x81;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
 
         // END_COLLECTION (Physical)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0xc0;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = END_COLLECTION(0); //0xc0;
 
     } // X, Y, Z, Rx, Ry, and Rz Axis
 
     if (configuration.getSimulationCount() > 0)
     {
-
         // USAGE_PAGE (Simulation Controls)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x05;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1); //0x05;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
 
         // LOGICAL_MINIMUM (-32767)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x16;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(2); //0x16;
         tempHidReportDescriptor[hidReportDescriptorSize++] = lowByte(configuration.getSimulationMin());
         tempHidReportDescriptor[hidReportDescriptorSize++] = highByte(configuration.getSimulationMin());
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;		// Use these two lines for 0 min
@@ -447,7 +478,7 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0x80;
 
         // LOGICAL_MAXIMUM (+32767)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x26;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(2); //0x26;
         tempHidReportDescriptor[hidReportDescriptorSize++] = lowByte(configuration.getSimulationMax());
         tempHidReportDescriptor[hidReportDescriptorSize++] = highByte(configuration.getSimulationMax());
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0xFF;	    // Use these two lines for 255 max
@@ -456,58 +487,58 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         //tempHidReportDescriptor[hidReportDescriptorSize++] = 0x7F;
 
         // REPORT_SIZE (16)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x75;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1); //0x75;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x10;
 
         // REPORT_COUNT (configuration.getSimulationCount())
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
         tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getSimulationCount();
 
         // COLLECTION (Physical)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0xA1;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = COLLECTION(1); //0xA1;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;
 
         if (configuration.getIncludeRudder())
         {
             // USAGE (Rudder)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0xBA;
         }
 
         if (configuration.getIncludeThrottle())
         {
             // USAGE (Throttle)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0xBB;
         }
 
         if (configuration.getIncludeAccelerator())
         {
             // USAGE (Accelerator)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0xC4;
         }
 
         if (configuration.getIncludeBrake())
         {
             // USAGE (Brake)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0xC5;
         }
 
         if (configuration.getIncludeSteering())
         {
             // USAGE (Steering)
-            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09;
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); //0x09;
             tempHidReportDescriptor[hidReportDescriptorSize++] = 0xC8;
         }
 
         // INPUT (Data,Var,Abs)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1); 0x81;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
 
         // END_COLLECTION (Physical)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0xc0;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = END_COLLECTION(0); //0xc0;
 
     } // Simulation Controls
 
@@ -515,7 +546,7 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
     {
 
         // COLLECTION (Physical)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0xA1;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = COLLECTION(1); //0xA1;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;
 
         // USAGE_PAGE (Generic Desktop)
@@ -530,53 +561,175 @@ void BleGamepad::begin(BleGamepadConfiguration *config)
         }
 
         // Logical Min (1)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x15;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(1); //0x15;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         // Logical Max (8)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x25;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(1); //0x25;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x08;
 
         // Physical Min (0)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x35;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = PHYSICAL_MINIMUM(1); //0x35;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;
 
         // Physical Max (315)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x46;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = PHYSICAL_MAXIMUM(2); //0x46;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x3B;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
 
         // Unit (SI Rot : Ang Pos)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x65;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = UNIT(1); //0x65;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x12;
 
         // Report Size (8)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x75;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1); //0x75;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x08;
 
         // Report Count (4)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x95;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1); //0x95;
         tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getHatSwitchCount();
 
         // Input (Data, Variable, Absolute)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1); //0x81;
         tempHidReportDescriptor[hidReportDescriptorSize++] = 0x42;
 
         // END_COLLECTION (Physical)
-        tempHidReportDescriptor[hidReportDescriptorSize++] = 0xc0;
+        tempHidReportDescriptor[hidReportDescriptorSize++] = END_COLLECTION(0); //0xc0;
     }
 
-    // END_COLLECTION (Application)
-    tempHidReportDescriptor[hidReportDescriptorSize++] = 0xc0;
+    // End gamepad collection
+    tempHidReportDescriptor[hidReportDescriptorSize++] = END_COLLECTION(0); //0xc0;
+
+    if(configuration.getUseMouse()){
+        // Mouse setup
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1);       
+        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; //Generic Desktop
+
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1); 
+        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02; //Mouse
+
+        tempHidReportDescriptor[hidReportDescriptorSize++] = COLLECTION(1);
+        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; //Application
+
+        tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1);
+        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; //Pointer
+
+        tempHidReportDescriptor[hidReportDescriptorSize++] = COLLECTION(1);
+        tempHidReportDescriptor[hidReportDescriptorSize++] = 0x0; //Physical
+
+        tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_ID(1);
+        tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getMouseHidReportId(); //Mouse report ID
+        
+        // Buttons (Left, Right, Middle, Back, Forward)
+        if (configuration.getMouseButtonCount() > 0)
+        {
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x09; //USAGE_PAGE (Button)
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_MINIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; //Button 1
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_MAXIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getMouseButtonCount();
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x00;
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = configuration.getMouseButtonCount();
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02; //INPUT (Data, Variable, Absolute) ;5 button bits
+            
+             if (mouseButtonPaddingBits > 0)
+            {
+                // 5 buttons @ 1 bit each means we need 3 bits of padding to pad to a byte
+                tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1);
+                tempHidReportDescriptor[hidReportDescriptorSize++] = mouseButtonPaddingBits;
+
+                tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1);
+                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01;
+
+                tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1);
+                tempHidReportDescriptor[hidReportDescriptorSize++] = 0x03; //INPUT (Constant, Variable, Absolute) ;3 bit padding
+            }
+        }
+
+        if (configuration.getMouseAxisCount() > 0)
+        {
+            // X/Y position, Wheel
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; //Generic Desktop
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x30; // X coordinate
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x031; // Y coordinate
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x38; // Wheel
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81; // Logical Min (-127)
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x7f; // Logical Max (127)
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x08; // Report Size (8). Whole byte, no padding needed
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x03; // Report Count (3). 3 bytes total
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x06; // Input (Data, Variable, Relative) ;3 bytes (X,Y,Wheel)
+        
+            // Horizontal wheel
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE_PAGE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x0c; //Consumer Devices
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = USAGE(2);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x38; //AC Pan
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x02;
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MINIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x81; // Logical Min (-127)
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = LOGICAL_MAXIMUM(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x7f; // Logical Max (127)
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_SIZE(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x08; // Report Size (8). Whole byte, no padding needed
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_COUNT(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x01; // Report Count (1). 1 byte total
+
+            tempHidReportDescriptor[hidReportDescriptorSize++] = HIDINPUT(1);
+            tempHidReportDescriptor[hidReportDescriptorSize++] = 0x06; // Input (Data, Variable, Relative) ;1 byte (Horizontal wheel)
+        }
+
+        // End Collection (Application - Physical)
+        tempHidReportDescriptor[hidReportDescriptorSize++] = END_COLLECTION(0); //0xc0;
+
+        // END_COLLECTION (Application)
+        tempHidReportDescriptor[hidReportDescriptorSize++] = END_COLLECTION(0); //0xc0;
+    }
 
     xTaskCreate(this->taskServer, "server", 20000, (void *)this, 5, NULL);
 }
 
-void BleGamepad::end(void)
+void BleMultiHID::end(void)
 {
 }
 
-void BleGamepad::setAxes(int16_t x, int16_t y, int16_t z, int16_t rZ, int16_t rX, int16_t rY, int16_t slider1, int16_t slider2)
+void BleMultiHID::setAxes(int16_t x, int16_t y, int16_t z, int16_t rZ, int16_t rX, int16_t rY, int16_t slider1, int16_t slider2)
 {
     if (x == -32768)
     {
@@ -622,11 +775,11 @@ void BleGamepad::setAxes(int16_t x, int16_t y, int16_t z, int16_t rZ, int16_t rX
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setSimulationControls(int16_t rudder, int16_t throttle, int16_t accelerator, int16_t brake, int16_t steering)
+void BleMultiHID::setSimulationControls(int16_t rudder, int16_t throttle, int16_t accelerator, int16_t brake, int16_t steering)
 {
     if (rudder == -32768)
     {
@@ -657,11 +810,11 @@ void BleGamepad::setSimulationControls(int16_t rudder, int16_t throttle, int16_t
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setHats(signed char hat1, signed char hat2, signed char hat3, signed char hat4)
+void BleMultiHID::setHats(signed char hat1, signed char hat2, signed char hat3, signed char hat4)
 {
     _hat1 = hat1;
     _hat2 = hat2;
@@ -670,11 +823,11 @@ void BleGamepad::setHats(signed char hat1, signed char hat2, signed char hat3, s
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setSliders(int16_t slider1, int16_t slider2)
+void BleMultiHID::setSliders(int16_t slider1, int16_t slider2)
 {
     if (slider1 == -32768)
     {
@@ -690,17 +843,19 @@ void BleGamepad::setSliders(int16_t slider1, int16_t slider2)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::sendReport(void)
+void BleMultiHID::sendGamepadReport(void)
 {
     if (this->isConnected())
     {
         uint8_t currentReportIndex = 0;
 
         uint8_t m[reportSize];
+
+        // Gamepad
 
         memset(&m, 0, sizeof(m));
         memcpy(&m, &_buttons, sizeof(_buttons));
@@ -795,12 +950,37 @@ void BleGamepad::sendReport(void)
             }
         }
 
+        // Notify
         this->inputGamepad->setValue(m, sizeof(m));
         this->inputGamepad->notify();
     }
 }
 
-void BleGamepad::press(uint8_t b)
+void BleMultiHID::sendMouseReport(){
+    if(!configuration.getUseMouse())
+        return;
+    
+    uint8_t mouse_report[mouseReportSize];
+    uint8_t currentReportIndex = 0;
+
+    memset(&mouse_report, 0, sizeof(mouse_report));
+    memcpy(&mouse_report, &_mouseButtons, sizeof(_mouseButtons));
+    currentReportIndex += numOfMouseButtonBytes;
+
+    // TODO: Make dynamic based on axis counts
+    if (configuration.getMouseAxisCount() > 0)
+    {
+        mouse_report[currentReportIndex++] = _mouseX;
+        mouse_report[currentReportIndex++] = _mouseY;
+        mouse_report[currentReportIndex++] = _mouseWheel;
+        mouse_report[currentReportIndex++] = _mouseHWheel;
+    }
+
+    this->inputMouse->setValue(mouse_report, sizeof(mouse_report));
+    this->inputMouse->notify();
+}
+
+void BleMultiHID::press(uint8_t b)
 {
     uint8_t index = (b - 1) / 8;
     uint8_t bit = (b - 1) % 8;
@@ -815,11 +995,11 @@ void BleGamepad::press(uint8_t b)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::release(uint8_t b)
+void BleMultiHID::release(uint8_t b)
 {
     uint8_t index = (b - 1) / 8;
     uint8_t bit = (b - 1) % 8;
@@ -834,11 +1014,11 @@ void BleGamepad::release(uint8_t b)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-uint8_t BleGamepad::specialButtonBitPosition(uint8_t b)
+uint8_t BleMultiHID::specialButtonBitPosition(uint8_t b)
 {
     if (b >= POSSIBLESPECIALBUTTONS)
         throw std::invalid_argument("Index out of range");
@@ -851,7 +1031,7 @@ uint8_t BleGamepad::specialButtonBitPosition(uint8_t b)
     return bit;
 }
 
-void BleGamepad::pressSpecialButton(uint8_t b)
+void BleMultiHID::pressSpecialButton(uint8_t b)
 {
     uint8_t button = specialButtonBitPosition(b);
     uint8_t bit = button % 8;
@@ -866,11 +1046,11 @@ void BleGamepad::pressSpecialButton(uint8_t b)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::releaseSpecialButton(uint8_t b)
+void BleMultiHID::releaseSpecialButton(uint8_t b)
 {
     uint8_t button = specialButtonBitPosition(b);
     uint8_t bit = button % 8;
@@ -885,91 +1065,91 @@ void BleGamepad::releaseSpecialButton(uint8_t b)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::pressStart()
+void BleMultiHID::pressStart()
 {
     pressSpecialButton(START_BUTTON);
 }
 
-void BleGamepad::releaseStart()
+void BleMultiHID::releaseStart()
 {
     releaseSpecialButton(START_BUTTON);
 }
 
-void BleGamepad::pressSelect()
+void BleMultiHID::pressSelect()
 {
     pressSpecialButton(SELECT_BUTTON);
 }
 
-void BleGamepad::releaseSelect()
+void BleMultiHID::releaseSelect()
 {
     releaseSpecialButton(SELECT_BUTTON);
 }
 
-void BleGamepad::pressMenu()
+void BleMultiHID::pressMenu()
 {
     pressSpecialButton(MENU_BUTTON);
 }
 
-void BleGamepad::releaseMenu()
+void BleMultiHID::releaseMenu()
 {
     releaseSpecialButton(MENU_BUTTON);
 }
 
-void BleGamepad::pressHome()
+void BleMultiHID::pressHome()
 {
     pressSpecialButton(HOME_BUTTON);
 }
 
-void BleGamepad::releaseHome()
+void BleMultiHID::releaseHome()
 {
     releaseSpecialButton(HOME_BUTTON);
 }
 
-void BleGamepad::pressBack()
+void BleMultiHID::pressBack()
 {
     pressSpecialButton(BACK_BUTTON);
 }
 
-void BleGamepad::releaseBack()
+void BleMultiHID::releaseBack()
 {
     releaseSpecialButton(BACK_BUTTON);
 }
 
-void BleGamepad::pressVolumeInc()
+void BleMultiHID::pressVolumeInc()
 {
     pressSpecialButton(VOLUME_INC_BUTTON);
 }
 
-void BleGamepad::releaseVolumeInc()
+void BleMultiHID::releaseVolumeInc()
 {
     releaseSpecialButton(VOLUME_INC_BUTTON);
 }
 
-void BleGamepad::pressVolumeDec()
+void BleMultiHID::pressVolumeDec()
 {
     pressSpecialButton(VOLUME_DEC_BUTTON);
 }
 
-void BleGamepad::releaseVolumeDec()
+void BleMultiHID::releaseVolumeDec()
 {
     releaseSpecialButton(VOLUME_DEC_BUTTON);
 }
 
-void BleGamepad::pressVolumeMute()
+void BleMultiHID::pressVolumeMute()
 {
     pressSpecialButton(VOLUME_MUTE_BUTTON);
 }
 
-void BleGamepad::releaseVolumeMute()
+void BleMultiHID::releaseVolumeMute()
 {
     releaseSpecialButton(VOLUME_MUTE_BUTTON);
 }
 
-void BleGamepad::setLeftThumb(int16_t x, int16_t y)
+void BleMultiHID::setLeftThumb(int16_t x, int16_t y)
 {
     if (x == -32768)
     {
@@ -985,11 +1165,11 @@ void BleGamepad::setLeftThumb(int16_t x, int16_t y)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setRightThumb(int16_t z, int16_t rZ)
+void BleMultiHID::setRightThumb(int16_t z, int16_t rZ)
 {
     if (z == -32768)
     {
@@ -1005,11 +1185,11 @@ void BleGamepad::setRightThumb(int16_t z, int16_t rZ)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setLeftTrigger(int16_t rX)
+void BleMultiHID::setLeftTrigger(int16_t rX)
 {
     if (rX == -32768)
     {
@@ -1020,11 +1200,11 @@ void BleGamepad::setLeftTrigger(int16_t rX)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setRightTrigger(int16_t rY)
+void BleMultiHID::setRightTrigger(int16_t rY)
 {
     if (rY == -32768)
     {
@@ -1035,11 +1215,11 @@ void BleGamepad::setRightTrigger(int16_t rY)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setTriggers(int16_t rX, int16_t rY)
+void BleMultiHID::setTriggers(int16_t rX, int16_t rY)
 {
     if (rX == -32768)
     {
@@ -1055,61 +1235,61 @@ void BleGamepad::setTriggers(int16_t rX, int16_t rY)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setHat(signed char hat)
+void BleMultiHID::setHat(signed char hat)
 {
     _hat1 = hat;
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setHat1(signed char hat1)
+void BleMultiHID::setHat1(signed char hat1)
 {
     _hat1 = hat1;
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setHat2(signed char hat2)
+void BleMultiHID::setHat2(signed char hat2)
 {
     _hat2 = hat2;
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setHat3(signed char hat3)
+void BleMultiHID::setHat3(signed char hat3)
 {
     _hat3 = hat3;
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setHat4(signed char hat4)
+void BleMultiHID::setHat4(signed char hat4)
 {
     _hat4 = hat4;
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setX(int16_t x)
+void BleMultiHID::setX(int16_t x)
 {
     if (x == -32768)
     {
@@ -1120,11 +1300,11 @@ void BleGamepad::setX(int16_t x)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setY(int16_t y)
+void BleMultiHID::setY(int16_t y)
 {
     if (y == -32768)
     {
@@ -1135,11 +1315,11 @@ void BleGamepad::setY(int16_t y)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setZ(int16_t z)
+void BleMultiHID::setZ(int16_t z)
 {
     if (z == -32768)
     {
@@ -1150,11 +1330,11 @@ void BleGamepad::setZ(int16_t z)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setRZ(int16_t rZ)
+void BleMultiHID::setRZ(int16_t rZ)
 {
     if (rZ == -32768)
     {
@@ -1165,11 +1345,11 @@ void BleGamepad::setRZ(int16_t rZ)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setRX(int16_t rX)
+void BleMultiHID::setRX(int16_t rX)
 {
     if (rX == -32768)
     {
@@ -1180,11 +1360,11 @@ void BleGamepad::setRX(int16_t rX)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setRY(int16_t rY)
+void BleMultiHID::setRY(int16_t rY)
 {
     if (rY == -32768)
     {
@@ -1195,11 +1375,11 @@ void BleGamepad::setRY(int16_t rY)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setSlider(int16_t slider)
+void BleMultiHID::setSlider(int16_t slider)
 {
     if (slider == -32768)
     {
@@ -1210,11 +1390,11 @@ void BleGamepad::setSlider(int16_t slider)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setSlider1(int16_t slider1)
+void BleMultiHID::setSlider1(int16_t slider1)
 {
     if (slider1 == -32768)
     {
@@ -1225,11 +1405,11 @@ void BleGamepad::setSlider1(int16_t slider1)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setSlider2(int16_t slider2)
+void BleMultiHID::setSlider2(int16_t slider2)
 {
     if (slider2 == -32768)
     {
@@ -1240,11 +1420,11 @@ void BleGamepad::setSlider2(int16_t slider2)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setRudder(int16_t rudder)
+void BleMultiHID::setRudder(int16_t rudder)
 {
     if (rudder == -32768)
     {
@@ -1255,11 +1435,11 @@ void BleGamepad::setRudder(int16_t rudder)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setThrottle(int16_t throttle)
+void BleMultiHID::setThrottle(int16_t throttle)
 {
     if (throttle == -32768)
     {
@@ -1270,11 +1450,11 @@ void BleGamepad::setThrottle(int16_t throttle)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setAccelerator(int16_t accelerator)
+void BleMultiHID::setAccelerator(int16_t accelerator)
 {
     if (accelerator == -32768)
     {
@@ -1285,11 +1465,11 @@ void BleGamepad::setAccelerator(int16_t accelerator)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setBrake(int16_t brake)
+void BleMultiHID::setBrake(int16_t brake)
 {
     if (brake == -32768)
     {
@@ -1300,11 +1480,11 @@ void BleGamepad::setBrake(int16_t brake)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-void BleGamepad::setSteering(int16_t steering)
+void BleMultiHID::setSteering(int16_t steering)
 {
     if (steering == -32768)
     {
@@ -1315,11 +1495,11 @@ void BleGamepad::setSteering(int16_t steering)
 
     if (configuration.getAutoReport())
     {
-        sendReport();
+        sendGamepadReport();
     }
 }
 
-bool BleGamepad::isPressed(uint8_t b)
+bool BleMultiHID::isPressed(uint8_t b)
 {
     uint8_t index = (b - 1) / 8;
     uint8_t bit = (b - 1) % 8;
@@ -1330,12 +1510,12 @@ bool BleGamepad::isPressed(uint8_t b)
     return false;
 }
 
-bool BleGamepad::isConnected(void)
+bool BleMultiHID::isConnected(void)
 {
     return this->connectionStatus->connected;
 }
 
-void BleGamepad::setBatteryLevel(uint8_t level)
+void BleMultiHID::setBatteryLevel(uint8_t level)
 {
     this->batteryLevel = level;
     if (hid != 0)
@@ -1349,30 +1529,109 @@ void BleGamepad::setBatteryLevel(uint8_t level)
 		
         if (configuration.getAutoReport())
         {
-            sendReport();
+            sendGamepadReport();
         }
     }
 }
 
-void BleGamepad::taskServer(void *pvParameter)
+// Mouse
+void BleMultiHID::mouseClick(uint8_t button)
 {
-    BleGamepad *BleGamepadInstance = (BleGamepad *)pvParameter; // static_cast<BleGamepad *>(pvParameter);
+    // No-op?
+}
+
+void BleMultiHID::mousePress(uint8_t button)
+{
+    uint8_t index = (button - 1) / 8;
+    uint8_t bit = (button - 1) % 8;
+    uint8_t bitmask = (1 << bit);
+
+    uint8_t result = _mouseButtons[index] | bitmask;
+
+    if (result != _mouseButtons[index])
+    {
+        _mouseButtons[index] = result;
+    }
+
+    if (configuration.getAutoReport())
+    {
+        sendMouseReport();
+    }
+}
+
+void BleMultiHID::mouseRelease(uint8_t button)
+{
+    uint8_t index = (button - 1) / 8;
+    uint8_t bit = (button - 1) % 8;
+    uint8_t bitmask = (1 << bit);
+
+    uint64_t result = _mouseButtons[index] & ~bitmask;
+
+    if (result != _mouseButtons[index])
+    {
+        _mouseButtons[index] = result;
+    }
+
+    if (configuration.getAutoReport())
+    {
+        sendMouseReport();
+    }
+}
+
+void BleMultiHID::mouseMove(signed char x, signed char y, signed char scrollX, signed char scrollY)
+{
+    if (x == -127)
+    {
+        x = -126;
+    }
+    if (y == -127)
+    {
+        y = -126;
+    }
+    if (scrollX == -127)
+    {
+        scrollX = -126;
+    }
+    if (scrollY == -127)
+    {
+        scrollY = -126;
+    }
+
+    _mouseX = x;
+    _mouseY = y;
+    _mouseWheel = scrollY;
+    _mouseHWheel = scrollX;
+
+    if (configuration.getAutoReport())
+    {
+        sendMouseReport();
+    }
+}
+
+void BleMultiHID::taskServer(void *pvParameter)
+{
+    BleMultiHID *BleMultiHIDInstance = (BleMultiHID *)pvParameter; // static_cast<BleMultiHID *>(pvParameter);
 
     // Use the procedure below to set a custom Bluetooth MAC address
     // Compiler adds 0x02 to the last value of board's base MAC address to get the BT MAC address, so take 0x02 away from the value you actually want when setting
     //uint8_t newMACAddress[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF - 0x02};
     //esp_base_mac_addr_set(&newMACAddress[0]); // Set new MAC address 
     
-    NimBLEDevice::init(BleGamepadInstance->deviceName);
+    NimBLEDevice::init(BleMultiHIDInstance->deviceName);
     NimBLEServer *pServer = NimBLEDevice::createServer();
-    pServer->setCallbacks(BleGamepadInstance->connectionStatus);
+    pServer->setCallbacks(BleMultiHIDInstance->connectionStatus);
 
-    BleGamepadInstance->hid = new NimBLEHIDDevice(pServer);
+    BleMultiHIDInstance->hid = new NimBLEHIDDevice(pServer);
+    
+    // Set up gamepad HID device
+    BleMultiHIDInstance->inputGamepad = BleMultiHIDInstance->hid->inputReport(BleMultiHIDInstance->configuration.getGamepadHidReportId()); // <-- input REPORTID from report map
+    BleMultiHIDInstance->connectionStatus->inputGamepad = BleMultiHIDInstance->inputGamepad;
 
-    BleGamepadInstance->inputGamepad = BleGamepadInstance->hid->inputReport(BleGamepadInstance->configuration.getHidReportId()); // <-- input REPORTID from report map
-    BleGamepadInstance->connectionStatus->inputGamepad = BleGamepadInstance->inputGamepad;
+    // Set up mouse HID device
+    BleMultiHIDInstance->inputMouse = BleMultiHIDInstance->hid->inputReport(BleMultiHIDInstance->configuration.getMouseHidReportId()); // <-- input REPORTID from report map
+    BleMultiHIDInstance->connectionStatus->inputMouse = BleMultiHIDInstance->inputMouse;
 
-    BleGamepadInstance->hid->manufacturer()->setValue(BleGamepadInstance->deviceManufacturer);
+    BleMultiHIDInstance->hid->manufacturer()->setValue(BleMultiHIDInstance->deviceManufacturer);
 
     NimBLEService *pService = pServer->getServiceByUUID(SERVICE_UUID_DEVICE_INFORMATION);
 	
@@ -1406,8 +1665,8 @@ void BleGamepad::taskServer(void *pvParameter)
     );
     pCharacteristic_Hardware_Revision->setValue(hardwareRevision);
 
-    BleGamepadInstance->hid->pnp(0x01, vid, pid, guidVersion);
-    BleGamepadInstance->hid->hidInfo(0x00, 0x01);
+    BleMultiHIDInstance->hid->pnp(0x01, vid, pid, guidVersion);
+    BleMultiHIDInstance->hid->hidInfo(0x00, 0x01);
 
     NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
 
@@ -1415,19 +1674,19 @@ void BleGamepad::taskServer(void *pvParameter)
     memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
 
     // Testing
-    //for (int i = 0; i < hidReportDescriptorSize; i++)
-    //    Serial.printf("%02x", customHidReportDescriptor[i]);
+    for (int i = 0; i < hidReportDescriptorSize; i++)
+       Serial.printf("%02x", customHidReportDescriptor[i]);
 
-    BleGamepadInstance->hid->reportMap((uint8_t *)customHidReportDescriptor, hidReportDescriptorSize);
-    BleGamepadInstance->hid->startServices();
+    BleMultiHIDInstance->hid->reportMap((uint8_t *)customHidReportDescriptor, hidReportDescriptorSize);
+    BleMultiHIDInstance->hid->startServices();
 
-    BleGamepadInstance->onStarted(pServer);
+    BleMultiHIDInstance->onStarted(pServer);
 
     NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
-    pAdvertising->setAppearance(HID_GAMEPAD);
-    pAdvertising->addServiceUUID(BleGamepadInstance->hid->hidService()->getUUID());
+    pAdvertising->setAppearance(GENERIC_HID);
+    pAdvertising->addServiceUUID(BleMultiHIDInstance->hid->hidService()->getUUID());
     pAdvertising->start();
-    BleGamepadInstance->hid->setBatteryLevel(BleGamepadInstance->batteryLevel);
+    BleMultiHIDInstance->hid->setBatteryLevel(BleMultiHIDInstance->batteryLevel);
 
     ESP_LOGD(LOG_TAG, "Advertising started!");
     vTaskDelay(portMAX_DELAY); // delay(portMAX_DELAY);

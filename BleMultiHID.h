@@ -1,5 +1,5 @@
-#ifndef ESP32_BLE_GAMEPAD_H
-#define ESP32_BLE_GAMEPAD_H
+#ifndef ESP32_BLE_MULTI_HID_H
+#define ESP32_BLE_MULTI_HID_H
 #include "sdkconfig.h"
 #if defined(CONFIG_BT_ENABLED)
 
@@ -9,11 +9,12 @@
 #include "BleConnectionStatus.h"
 #include "NimBLEHIDDevice.h"
 #include "NimBLECharacteristic.h"
-#include "BleGamepadConfiguration.h"
+#include "BleMultiHIDConfiguration.h"
 
-class BleGamepad
+class BleMultiHID
 {
 private:
+    // Gamepad
     uint8_t _buttons[16]; // 8 bits x 16 --> 128 bits
     uint8_t _specialButtons;
     int16_t _x;
@@ -34,20 +35,29 @@ private:
     int16_t _hat3;
     int16_t _hat4;
 
-    BleGamepadConfiguration configuration;
+    // Mouse
+    uint8_t _mouseButtons[16]; // 8 bits x 16 --> 128 bits
+    signed char _mouseX;
+    signed char _mouseY;
+    signed char _mouseWheel;
+    signed char _mouseHWheel;
+
+    BleMultiHIDConfiguration configuration;
 
     BleConnectionStatus *connectionStatus;
 
     NimBLEHIDDevice *hid;
     NimBLECharacteristic *inputGamepad;
+    NimBLECharacteristic *inputMouse;
+
 
     void rawAction(uint8_t msg[], char msgSize);
     static void taskServer(void *pvParameter);
     uint8_t specialButtonBitPosition(uint8_t specialButton);
 
 public:
-    BleGamepad(std::string deviceName = "ESP32 BLE Gamepad", std::string deviceManufacturer = "Espressif", uint8_t batteryLevel = 100);
-    void begin(BleGamepadConfiguration *config = new BleGamepadConfiguration());
+    BleMultiHID(std::string deviceName = "ESP32 BLE Gamepad", std::string deviceManufacturer = "Espressif", uint8_t batteryLevel = 100);
+    void begin(BleMultiHIDConfiguration *config = new BleMultiHIDConfiguration());
     void end(void);
     void setAxes(int16_t x = 0, int16_t y = 0, int16_t z = 0, int16_t rZ = 0, int16_t rX = 0, int16_t rY = 0, int16_t slider1 = 0, int16_t slider2 = 0);
     void press(uint8_t b = BUTTON_1);   // press BUTTON_1 by default
@@ -97,11 +107,22 @@ public:
     void setBrake(int16_t brake = 0);
     void setSteering(int16_t steering = 0);
     void setSimulationControls(int16_t rudder = 0, int16_t throttle = 0, int16_t accelerator = 0, int16_t brake = 0, int16_t steering = 0);
-    void sendReport();
+    void sendGamepadReport();
+    void sendMouseReport();
     bool isPressed(uint8_t b = BUTTON_1); // check BUTTON_1 by default
     bool isConnected(void);
     void resetButtons();
     void setBatteryLevel(uint8_t level);
+
+    // Mouse
+    void mouseClick(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
+    void mousePress(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
+    void mouseRelease(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
+    void mouseMove(signed char x, signed char y, signed char scrollX = 0, signed char scrollY = 0);
+    
+    // Keyboard
+    // TODO
+    
     uint8_t batteryLevel;
     std::string deviceManufacturer;
     std::string deviceName;
@@ -112,4 +133,4 @@ protected:
 
 #endif // CONFIG_BT_NIMBLE_ROLE_PERIPHERAL
 #endif // CONFIG_BT_ENABLED
-#endif // ESP32_BLE_GAMEPAD_H
+#endif // ESP32_BLE_MULTI_HID_H

@@ -6,6 +6,11 @@
 #define POSSIBLESIMULATIONCONTROLS 5
 
 #include <Arduino.h>
+#include <HIDKeyboardTypes.h>
+
+#define GAMEPAD_REPORT_ID 0x01
+#define MOUSE_REPORT_ID 0x02
+#define KEYBOARD_REPORT_ID 0x03
 
 #define CONTROLLER_TYPE_JOYSTICK 0x04
 #define CONTROLLER_TYPE_GAMEPAD 0x05
@@ -199,12 +204,23 @@
 #define VOLUME_DEC_BUTTON 6
 #define VOLUME_MUTE_BUTTON 7
 
-class BleGamepadConfiguration
+// Mouse
+
+#define MOUSE_LOGICAL_LEFT_BUTTON 0x01
+#define MOUSE_LOGICAL_RIGHT_BUTTON 0x02
+#define MOUSE_LOGICAL_BUTTON_3 0x03
+#define MOUSE_LOGICAL_BUTTON_4 0x04
+#define MOUSE_LOGICAL_BUTTON_5 0x05
+
+// Keyboard
+
+class BleMultiHIDConfiguration
 {
 private:
     uint8_t _controllerType;
     bool _autoReport;
-    uint8_t _hidReportId;
+    uint8_t _gamepadHIDReportId;
+    uint8_t _mouseHIDReportId;
     uint16_t _buttonCount;
     uint8_t _hatSwitchCount;
     bool _whichSpecialButtons[POSSIBLESPECIALBUTTONS];
@@ -223,12 +239,20 @@ private:
     char *_firmwareRevision;
     char *_hardwareRevision;
 
+    // Keyboard support
+    bool _useKeyboard;
+    uint16_t _mouseButtonCount;
+    uint16_t _mouseAxisCount;
+    
+    // Mouse support
+    bool _useMouse;
+
 public:
-    BleGamepadConfiguration();
+    BleMultiHIDConfiguration();
 
     bool getAutoReport();
     uint8_t getControllerType();
-    uint8_t getHidReportId();
+    uint8_t getGamepadHidReportId();
     uint16_t getButtonCount();
     uint8_t getTotalSpecialButtonCount();
     uint8_t getDesktopSpecialButtonCount();
@@ -273,9 +297,18 @@ public:
     char *getFirmwareRevision();
     char *getHardwareRevision();
 
+    // Keyboard support
+    bool getUseKeyboard();
+
+    // Mouse support
+    uint8_t getMouseHidReportId();
+    bool getUseMouse();
+    uint16_t getMouseButtonCount();
+    uint16_t getMouseAxisCount();
+
     void setControllerType(uint8_t controllerType);
     void setAutoReport(bool value);
-    void setHidReportId(uint8_t value);
+    void setGamepadHidReportId(uint8_t value);
     void setButtonCount(uint16_t value);
     void setHatSwitchCount(uint8_t value);
     void setIncludeStart(bool value);
@@ -314,6 +347,15 @@ public:
     void setSerialNumber(char *value);
     void setFirmwareRevision(char *value);
     void setHardwareRevision(char *value);
+
+    // Keyboard support
+    void setUseKeyboard(bool value);
+
+    // Mouse support
+    void setMouseHidReportId(uint8_t value);
+    void setUseMouse(bool value);
+    void setMouseButtonCount(uint16_t value);
+    void setMouseAxisCount(uint16_t value);
 };
 
 #endif

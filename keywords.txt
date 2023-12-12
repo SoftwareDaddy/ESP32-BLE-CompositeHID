@@ -4,8 +4,8 @@
 # Class
 #######################################
 
-BleGamepad  KEYWORD1
-BleGamepadConfiguration KEYWORD1
+BleMultiHID  KEYWORD1
+BleMultiHIDConfiguration KEYWORD1
 
 #######################################
 # Methods and Functions
