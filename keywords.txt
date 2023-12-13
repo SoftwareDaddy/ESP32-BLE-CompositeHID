@@ -4,8 +4,8 @@
 # Class
 #######################################
 
-BleMultiHID  KEYWORD1
-BleMultiHIDConfiguration KEYWORD1
+BleCompositeHID  KEYWORD1
+BleCompositeHIDConfiguration KEYWORD1
 
 #######################################
 # Methods and Functions

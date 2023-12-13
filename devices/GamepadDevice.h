@@ -1,18 +1,15 @@
-#ifndef ESP32_BLE_MULTI_HID_H
-#define ESP32_BLE_MULTI_HID_H
-#include "sdkconfig.h"
-#if defined(CONFIG_BT_ENABLED)
+#ifndef ESP32_GAMEPAD_DEVICE_H
+#define ESP32_GAMEPAD_DEVICE_H
 
-#include "nimconfig.h"
-#if defined(CONFIG_BT_NIMBLE_ROLE_PERIPHERAL)
-
-#include "BleConnectionStatus.h"
-#include "NimBLEHIDDevice.h"
 #include "NimBLECharacteristic.h"
-#include "BleMultiHIDConfiguration.h"
+#include "GamepadConfiguration.h"
 
-class BleMultiHID
+class GamepadDevice 
 {
+    GamepadConfiguration* _config;
+    NimBLECharacteristic* _input;
+    NimBLECharacteristic* _output;
+
 private:
     // Gamepad
     uint8_t _buttons[16]; // 8 bits x 16 --> 128 bits
@@ -35,30 +32,11 @@ private:
     int16_t _hat3;
     int16_t _hat4;
 
-    // Mouse
-    uint8_t _mouseButtons[16]; // 8 bits x 16 --> 128 bits
-    signed char _mouseX;
-    signed char _mouseY;
-    signed char _mouseWheel;
-    signed char _mouseHWheel;
-
-    BleMultiHIDConfiguration configuration;
-
-    BleConnectionStatus *connectionStatus;
-
-    NimBLEHIDDevice *hid;
-    NimBLECharacteristic *inputGamepad;
-    NimBLECharacteristic *inputMouse;
-
-
-    void rawAction(uint8_t msg[], char msgSize);
-    static void taskServer(void *pvParameter);
-    uint8_t specialButtonBitPosition(uint8_t specialButton);
-
 public:
-    BleMultiHID(std::string deviceName = "ESP32 BLE Gamepad", std::string deviceManufacturer = "Espressif", uint8_t batteryLevel = 100);
-    void begin(BleMultiHIDConfiguration *config = new BleMultiHIDConfiguration());
-    void end(void);
+    GamepadDevice(GamepadConfiguration* config, NimBLECharacteristic* inputCharacteristic = nullptr, NimBLECharacteristic* outputCharacteristic = nullptr);
+
+    void resetButtons();
+
     void setAxes(int16_t x = 0, int16_t y = 0, int16_t z = 0, int16_t rZ = 0, int16_t rX = 0, int16_t rY = 0, int16_t slider1 = 0, int16_t slider2 = 0);
     void press(uint8_t b = BUTTON_1);   // press BUTTON_1 by default
     void release(uint8_t b = BUTTON_1); // release BUTTON_1 by default
@@ -114,23 +92,9 @@ public:
     void resetButtons();
     void setBatteryLevel(uint8_t level);
 
-    // Mouse
-    void mouseClick(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
-    void mousePress(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
-    void mouseRelease(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
-    void mouseMove(signed char x, signed char y, signed char scrollX = 0, signed char scrollY = 0);
-    
-    // Keyboard
-    // TODO
-    
-    uint8_t batteryLevel;
-    std::string deviceManufacturer;
-    std::string deviceName;
+private:
+    uint8_t specialButtonBitPosition(uint8_t specialButton);
 
-protected:
-    virtual void onStarted(NimBLEServer *pServer){};
 };
 
-#endif // CONFIG_BT_NIMBLE_ROLE_PERIPHERAL
-#endif // CONFIG_BT_ENABLED
-#endif // ESP32_BLE_MULTI_HID_H
+#endif

@@ -1,16 +1,13 @@
 #ifndef ESP32_BLE_GAMEPAD_CONFIG_H
 #define ESP32_BLE_GAMEPAD_CONFIG_H
 
+#include "BaseCompositeDeviceConfiguration.h"
+
 #define POSSIBLESPECIALBUTTONS 8
 #define POSSIBLEAXES 8
 #define POSSIBLESIMULATIONCONTROLS 5
 
-#include <Arduino.h>
-#include <HIDKeyboardTypes.h>
-
 #define GAMEPAD_REPORT_ID 0x01
-#define MOUSE_REPORT_ID 0x02
-#define KEYBOARD_REPORT_ID 0x03
 
 #define CONTROLLER_TYPE_JOYSTICK 0x04
 #define CONTROLLER_TYPE_GAMEPAD 0x05
@@ -204,23 +201,10 @@
 #define VOLUME_DEC_BUTTON 6
 #define VOLUME_MUTE_BUTTON 7
 
-// Mouse
-
-#define MOUSE_LOGICAL_LEFT_BUTTON 0x01
-#define MOUSE_LOGICAL_RIGHT_BUTTON 0x02
-#define MOUSE_LOGICAL_BUTTON_3 0x03
-#define MOUSE_LOGICAL_BUTTON_4 0x04
-#define MOUSE_LOGICAL_BUTTON_5 0x05
-
-// Keyboard
-
-class BleMultiHIDConfiguration
+class GamepadConfiguration : public CompositeDeviceConfiguration
 {
 private:
     uint8_t _controllerType;
-    bool _autoReport;
-    uint8_t _gamepadHIDReportId;
-    uint8_t _mouseHIDReportId;
     uint16_t _buttonCount;
     uint8_t _hatSwitchCount;
     bool _whichSpecialButtons[POSSIBLESPECIALBUTTONS];
@@ -233,26 +217,15 @@ private:
     int16_t _axesMax;
     int16_t _simulationMin;
     int16_t _simulationMax;
-    char *_modelNumber;
-    char *_softwareRevision;
-    char *_serialNumber;
-    char *_firmwareRevision;
-    char *_hardwareRevision;
-
-    // Keyboard support
-    bool _useKeyboard;
-    uint16_t _mouseButtonCount;
-    uint16_t _mouseAxisCount;
     
-    // Mouse support
-    bool _useMouse;
 
 public:
-    BleMultiHIDConfiguration();
+    GamepadConfiguration();
 
-    bool getAutoReport();
+    uint8_t getDeviceReportSize() override;
+    void makeDeviceReport(uint8* buffer, size_t size) override;
+
     uint8_t getControllerType();
-    uint8_t getGamepadHidReportId();
     uint16_t getButtonCount();
     uint8_t getTotalSpecialButtonCount();
     uint8_t getDesktopSpecialButtonCount();
@@ -284,31 +257,12 @@ public:
     bool getIncludeBrake();
     bool getIncludeSteering();
     const bool *getWhichSimulationControls() const;
-    uint16_t getVid();
-    uint16_t getPid();
-	uint16_t getGuidVersion();
     int16_t getAxesMin();
     int16_t getAxesMax();
     int16_t getSimulationMin();
     int16_t getSimulationMax();
-    char *getModelNumber();
-    char *getSoftwareRevision();
-    char *getSerialNumber();
-    char *getFirmwareRevision();
-    char *getHardwareRevision();
-
-    // Keyboard support
-    bool getUseKeyboard();
-
-    // Mouse support
-    uint8_t getMouseHidReportId();
-    bool getUseMouse();
-    uint16_t getMouseButtonCount();
-    uint16_t getMouseAxisCount();
 
     void setControllerType(uint8_t controllerType);
-    void setAutoReport(bool value);
-    void setGamepadHidReportId(uint8_t value);
     void setButtonCount(uint16_t value);
     void setHatSwitchCount(uint8_t value);
     void setIncludeStart(bool value);
@@ -335,27 +289,11 @@ public:
     void setIncludeBrake(bool value);
     void setIncludeSteering(bool value);
     void setWhichSimulationControls(bool rudder, bool throttle, bool accelerator, bool brake, bool steering);
-    void setVid(uint16_t value);
-    void setPid(uint16_t value);
-	void setGuidVersion(uint16_t value);
-    void setAxesMin(int16_t value);
-    void setAxesMax(int16_t value);
     void setSimulationMin(int16_t value);
     void setSimulationMax(int16_t value);
-    void setModelNumber(char *value);
-    void setSoftwareRevision(char *value);
-    void setSerialNumber(char *value);
-    void setFirmwareRevision(char *value);
-    void setHardwareRevision(char *value);
 
-    // Keyboard support
-    void setUseKeyboard(bool value);
-
-    // Mouse support
-    void setMouseHidReportId(uint8_t value);
-    void setUseMouse(bool value);
-    void setMouseButtonCount(uint16_t value);
-    void setMouseAxisCount(uint16_t value);
+private:
+    uint8_t getButtonPaddingBits();
 };
 
 #endif

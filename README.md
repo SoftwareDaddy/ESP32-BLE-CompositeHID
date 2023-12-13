@@ -55,7 +55,7 @@ It would be great however if any improvements are fed back into this version.
 /*
  * This example turns the ESP32 into a Bluetooth LE gamepad that presses buttons and moves axis
  *
- * At the moment we are using the default settings, but they can be canged using a BleMultiHIDConfig instance as parameter for the begin function.
+ * At the moment we are using the default settings, but they can be canged using a BleCompositeHIDConfig instance as parameter for the begin function.
  *
  * Possible buttons are:
  * BUTTON_1 through to BUTTON_16
@@ -65,7 +65,7 @@ It would be great however if any improvements are fed back into this version.
  * DPAD_CENTERED, DPAD_UP, DPAD_UP_RIGHT, DPAD_RIGHT, DPAD_DOWN_RIGHT, DPAD_DOWN, DPAD_DOWN_LEFT, DPAD_LEFT, DPAD_UP_LEFT
  * (or HAT_CENTERED, HAT_UP etc)
  *
- * bleMultiHID.setAxes sets all axes at once. There are a few:
+ * bleCompositeHID.setAxes sets all axes at once. There are a few:
  * (x axis, y axis, z axis, rx axis, ry axis, rz axis, slider 1, slider 2)
  *
  * Library can also be configured to support up to 5 simulation controls
@@ -77,36 +77,36 @@ It would be great however if any improvements are fed back into this version.
  */
 
 #include <Arduino.h>
-#include <BleMultiHID.h>
+#include <BleCompositeHID.h>
 
-BleMultiHID bleMultiHID;
+BleCompositeHID bleCompositeHID;
 
 void setup()
 {
     Serial.begin(115200);
     Serial.println("Starting BLE work!");
-    bleMultiHID.begin();
-    // The default bleMultiHID.begin() above enables 16 buttons, all axes, one hat, and no simulation controls or special buttons
+    bleCompositeHID.begin();
+    // The default bleCompositeHID.begin() above enables 16 buttons, all axes, one hat, and no simulation controls or special buttons
 }
 
 void loop()
 {
-    if (bleMultiHID.isConnected())
+    if (bleCompositeHID.isConnected())
     {
         Serial.println("Press buttons 5, 16 and start. Move all enabled axes to max. Set DPAD (hat 1) to down right.");
-        bleMultiHID.press(BUTTON_5);
-        bleMultiHID.press(BUTTON_16);
-        bleMultiHID.pressStart();
-        bleMultiHID.setAxes(32767, 32767, 32767, 32767, 32767, 32767, 32767, 32767);
-        bleMultiHID.setHat1(HAT_DOWN_RIGHT);
+        bleCompositeHID.press(BUTTON_5);
+        bleCompositeHID.press(BUTTON_16);
+        bleCompositeHID.pressStart();
+        bleCompositeHID.setAxes(32767, 32767, 32767, 32767, 32767, 32767, 32767, 32767);
+        bleCompositeHID.setHat1(HAT_DOWN_RIGHT);
         // All axes, sliders, hats etc can also be set independently. See the IndividualAxes.ino example
         delay(500);
 
         Serial.println("Release button 5 and start. Move all axes to min. Set DPAD (hat 1) to centred.");
-        bleMultiHID.release(BUTTON_5);
-        bleMultiHID.releaseStart();
-        bleMultiHID.setHat1(HAT_CENTERED);
-        bleMultiHID.setAxes(0, 0, 0, 0, 0, 0, 0, 0);
+        bleCompositeHID.release(BUTTON_5);
+        bleCompositeHID.releaseStart();
+        bleCompositeHID.setHat1(HAT_CENTERED);
+        bleCompositeHID.setAxes(0, 0, 0, 0, 0, 0, 0, 0);
         delay(500);
     }
 }
@@ -117,11 +117,11 @@ VID and PID values can be set. See TestAll.ino for example.
 
 There is also Bluetooth specific information that you can use (optional):
 
-Instead of `BleMultiHID bleMultiHID;` you can do `BleMultiHID bleMultiHID("Bluetooth Device Name", "Bluetooth Device Manufacturer", 100);`.
+Instead of `BleCompositeHID bleCompositeHID;` you can do `BleCompositeHID bleCompositeHID("Bluetooth Device Name", "Bluetooth Device Manufacturer", 100);`.
 The third parameter is the initial battery level of your device.
 By default the battery level will be set to 100%, the device name will be `ESP32 BLE Gamepad` and the manufacturer will be `Espressif`.
 
-Battery level can be set during operation by calling, for example, bleMultiHID.setBatteryLevel(80);
+Battery level can be set during operation by calling, for example, bleCompositeHID.setBatteryLevel(80);
 Update sent on next gamepad update if auto reporting is not enabled
 
 
