@@ -3,11 +3,12 @@
 #define ESP32_MOUSE_DEVICE_H
 
 #include "NimBLECharacteristic.h"
-#include "MouseConfiguration.h"
+#include <MouseConfiguration.h>
+#include <BaseCompositeDevice.h>
 
-class MouseDevice {
+class MouseDevice : public BaseCompositeDevice {
 private:
-    MouseConfiguration* _config;
+    MouseConfiguration _config;
     NimBLECharacteristic* _input;
     NimBLECharacteristic* _output;
 
@@ -18,10 +19,12 @@ private:
     signed char _mouseHWheel;
 
 public:
-    MouseDevice(MouseConfiguration* config, NimBLECharacteristic* inputCharacteristic = nullptr, NimBLECharacteristic* outputCharacteristic = nullptr);
+    MouseDevice(const MouseConfiguration& config);
     
-    void resetButtons();
+    void init(NimBLEHIDDevice* hid) override;
+    BaseCompositeDeviceConfiguration* getDeviceConfig() override;
 
+    void resetButtons();
     void mouseClick(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
     void mousePress(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
     void mouseRelease(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);

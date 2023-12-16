@@ -1,13 +1,14 @@
 #ifndef ESP32_BLE_GAMEPAD_CONFIG_H
 #define ESP32_BLE_GAMEPAD_CONFIG_H
 
-#include "BaseCompositeDeviceConfiguration.h"
+#include <BaseCompositeDevice.h>
 
 #define POSSIBLESPECIALBUTTONS 8
 #define POSSIBLEAXES 8
 #define POSSIBLESIMULATIONCONTROLS 5
 
 #define GAMEPAD_REPORT_ID 0x01
+#define GAMEPAD_DEVICE_NAME "Gamepad"
 
 #define CONTROLLER_TYPE_JOYSTICK 0x04
 #define CONTROLLER_TYPE_GAMEPAD 0x05
@@ -201,29 +202,16 @@
 #define VOLUME_DEC_BUTTON 6
 #define VOLUME_MUTE_BUTTON 7
 
-class GamepadConfiguration : public CompositeDeviceConfiguration
+class GamepadConfiguration : public BaseCompositeDeviceConfiguration
 {
-private:
-    uint8_t _controllerType;
-    uint16_t _buttonCount;
-    uint8_t _hatSwitchCount;
-    bool _whichSpecialButtons[POSSIBLESPECIALBUTTONS];
-    bool _whichAxes[POSSIBLEAXES];
-    bool _whichSimulationControls[POSSIBLESIMULATIONCONTROLS];
-    uint16_t _vid;
-    uint16_t _pid;
-	uint16_t _guidVersion;
-    int16_t _axesMin;
-    int16_t _axesMax;
-    int16_t _simulationMin;
-    int16_t _simulationMax;
-    
-
 public:
     GamepadConfiguration();
 
+    const char* getDeviceName() override;
     uint8_t getDeviceReportSize() override;
-    void makeDeviceReport(uint8* buffer, size_t size) override;
+    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
+    uint8_t getButtonNumBytes();
+    uint8_t getSpecialButtonNumBytes();
 
     uint8_t getControllerType();
     uint16_t getButtonCount();
@@ -289,11 +277,30 @@ public:
     void setIncludeBrake(bool value);
     void setIncludeSteering(bool value);
     void setWhichSimulationControls(bool rudder, bool throttle, bool accelerator, bool brake, bool steering);
+    
+    void setAxesMin(int16_t value);
+    void setAxesMax(int16_t value);
     void setSimulationMin(int16_t value);
     void setSimulationMax(int16_t value);
 
 private:
-    uint8_t getButtonPaddingBits();
+    uint8_t getButtonNumPaddingBits();
+    uint8_t getSpecialButtonNumPaddingBits();
+
+    private:
+    uint8_t _controllerType;
+    uint16_t _buttonCount;
+    uint8_t _hatSwitchCount;
+    bool _whichSpecialButtons[POSSIBLESPECIALBUTTONS];
+    bool _whichAxes[POSSIBLEAXES];
+    bool _whichSimulationControls[POSSIBLESIMULATIONCONTROLS];
+    uint16_t _vid;
+    uint16_t _pid;
+	uint16_t _guidVersion;
+    int16_t _axesMin;
+    int16_t _axesMax;
+    int16_t _simulationMin;
+    int16_t _simulationMax;
 };
 
 #endif

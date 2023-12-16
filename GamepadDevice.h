@@ -1,14 +1,13 @@
 #ifndef ESP32_GAMEPAD_DEVICE_H
 #define ESP32_GAMEPAD_DEVICE_H
 
-#include "NimBLECharacteristic.h"
-#include "GamepadConfiguration.h"
+#include <NimBLECharacteristic.h>
+#include <GamepadConfiguration.h>
+#include <BaseCompositeDevice.h>
 
-class GamepadDevice 
+class GamepadDevice : public BaseCompositeDevice
 {
-    GamepadConfiguration* _config;
-    NimBLECharacteristic* _input;
-    NimBLECharacteristic* _output;
+    GamepadConfiguration _config;
 
 private:
     // Gamepad
@@ -33,9 +32,10 @@ private:
     int16_t _hat4;
 
 public:
-    GamepadDevice(GamepadConfiguration* config, NimBLECharacteristic* inputCharacteristic = nullptr, NimBLECharacteristic* outputCharacteristic = nullptr);
+    GamepadDevice(const GamepadConfiguration& config);
 
-    void resetButtons();
+    void init(NimBLEHIDDevice* hid) override;
+    BaseCompositeDeviceConfiguration* getDeviceConfig() override;
 
     void setAxes(int16_t x = 0, int16_t y = 0, int16_t z = 0, int16_t rZ = 0, int16_t rX = 0, int16_t rY = 0, int16_t slider1 = 0, int16_t slider2 = 0);
     void press(uint8_t b = BUTTON_1);   // press BUTTON_1 by default
@@ -94,7 +94,6 @@ public:
 
 private:
     uint8_t specialButtonBitPosition(uint8_t specialButton);
-
 };
 
 #endif

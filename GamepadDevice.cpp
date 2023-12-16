@@ -1,9 +1,8 @@
 #include "GamepadDevice.h"
+#include "BleCompositeHID.h"
 
-GamepadDevice::GamepadDevice(GamepadConfiguration* config, NimBLECharacteristic* inputCharacteristic = nullptr, NimBLECharacteristic* outputCharacteristic = nullptr):
-    _config(*config), // Copy config to avoid modification
-    _input(inputCharacteristic),
-    _output(outputCharacteristic),
+GamepadDevice::GamepadDevice(const GamepadConfiguration& config):
+    _config(config), // Copy config to avoid modification
     _buttons(),
     _specialButtons(),
     _x(0),
@@ -25,6 +24,16 @@ GamepadDevice::GamepadDevice(GamepadConfiguration* config, NimBLECharacteristic*
     _hat4(0)
 {
     this->resetButtons();
+}
+
+void GamepadDevice::init(NimBLEHIDDevice* hid)
+{
+    setCharacteristics(hid->inputReport(_config.getReportId()), nullptr);
+}
+
+BaseCompositeDeviceConfiguration* GamepadDevice::getDeviceConfig()
+{
+    return &_config;
 }
 
 void GamepadDevice::resetButtons()
@@ -682,7 +691,13 @@ bool GamepadDevice::isPressed(uint8_t b)
 
 void GamepadDevice::sendGamepadReport(void)
 {
-    if (!_input || !this->isConnected())
+    auto input = getInput();
+    auto parentDevice = this->getParent();
+
+    if (!input || !parentDevice)
+        return;
+
+    if(!parentDevice->isConnected())
         return;
 
     uint8_t currentReportIndex = 0;
@@ -690,8 +705,8 @@ void GamepadDevice::sendGamepadReport(void)
 
     memset(&m, 0, sizeof(m));
     memcpy(&m, &_buttons, sizeof(_buttons));
-
-    currentReportIndex += numOfButtonBytes;
+    
+    currentReportIndex += _config.getButtonNumBytes();
 
     if (_config.getTotalSpecialButtonCount() > 0)
     {
@@ -782,6 +797,6 @@ void GamepadDevice::sendGamepadReport(void)
     }
 
     // Notify
-    this->_input->setValue(m, sizeof(m));
-    this->_input->notify();
+    input->setValue(m, sizeof(m));
+    input->notify();
 }

@@ -1,30 +1,30 @@
 #include "MouseConfiguration.h"
 
 MouseConfiguration::MouseConfiguration() : 
-    CompositeDeviceConfiguration(MOUSE_REPORT_ID),
+    BaseCompositeDeviceConfiguration(MOUSE_REPORT_ID),
     _mouseButtonCount(5),
     _whichAxes{true, true, false, false, false, false, true, true}
 {               
 }
 
+const char* MouseConfiguration::getDeviceName() { 
+    return MOUSE_DEVICE_NAME; 
+}
+
 uint8_t MouseConfiguration::getDeviceReportSize()
 {
     // TODO: Make number of mouse buttons dynamic
-    uint8_t numOfMouseButtonBytes = this->getMouseButtonCount() / 8; // 5 hardcoded buttons for testing
-    if (getMouseButtonPaddingBits() > 0)
-    {
-        numOfMouseButtonBytes++;
-    }
+    uint8_t numOfMouseButtonBytes = this->getMouseButtonNumBytes(); // 5 buttons @ 1 bit each means we need 3 bits of padding to pad to a byte
 
     // TODO: Make number of mouse axis' dynamic? 
     uint8_t numOfMouseAxisBytes = this->getMouseAxisCount(); //X, Y, Wheel, Horiz wheel;
 
     // Mouse report size (bytes)
-    mouseReportSize = numOfMouseButtonBytes + numOfMouseAxisBytes;
+    uint8_t mouseReportSize = numOfMouseButtonBytes + numOfMouseAxisBytes;
     return mouseReportSize;
 }
 
-void MouseConfiguration::makeDeviceReport(uint8* buffer, size_t size)
+size_t MouseConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize)
 {
     uint8_t tempHidReportDescriptor[150];
     int hidReportDescriptorSize = 0;
@@ -46,7 +46,7 @@ void MouseConfiguration::makeDeviceReport(uint8* buffer, size_t size)
     tempHidReportDescriptor[hidReportDescriptorSize++] = 0x0; //Physical
 
     tempHidReportDescriptor[hidReportDescriptorSize++] = REPORT_ID(1);
-    tempHidReportDescriptor[hidReportDescriptorSize++] = this->getMouseHidReportId(); //Mouse report ID
+    tempHidReportDescriptor[hidReportDescriptorSize++] = this->getReportId(); //Mouse report ID
     
     // Buttons (Left, Right, Middle, Back, Forward)
     if (this->getMouseButtonCount() > 0)
@@ -152,17 +152,19 @@ void MouseConfiguration::makeDeviceReport(uint8* buffer, size_t size)
     tempHidReportDescriptor[hidReportDescriptorSize++] = END_COLLECTION(0); //0xc0;
 
 
-    if(hidReportDescriptorSize < size){
+    if(hidReportDescriptorSize < bufferSize){
         memcpy(buffer, tempHidReportDescriptor, hidReportDescriptorSize);
     } else {
-        ESP_LOGE("HID Report Descriptor size is larger than provided buffer size");
+        return -1;
     }
+
+    return hidReportDescriptorSize;
 }
 
 uint16_t MouseConfiguration::getMouseButtonCount(){ return _mouseButtonCount; }
 uint16_t MouseConfiguration::getMouseAxisCount(){ 
     int count = 0;
-    for (int i = 0; i < POSSIBLEAXES; i++)
+    for (int i = 0; i < MOUSE_POSSIBLE_AXIS_COUNT; i++)
     {
         count += (int)_whichAxes[i];
     }
@@ -172,7 +174,7 @@ uint16_t MouseConfiguration::getMouseAxisCount(){
 
 void MouseConfiguration::setMouseButtonCount(uint16_t value) { _mouseButtonCount = value; }
 
-MouseConfiguration::getMouseButtonPaddingBits()
+uint8_t MouseConfiguration::getMouseButtonPaddingBits()
 {
     uint8_t mouseButtonPaddingBits = 8 - (this->getMouseButtonCount() % 8);
     if (mouseButtonPaddingBits == 8)
@@ -181,4 +183,15 @@ MouseConfiguration::getMouseButtonPaddingBits()
     }
 
     return mouseButtonPaddingBits;
+}
+
+uint8_t MouseConfiguration::getMouseButtonNumBytes()
+{
+    uint8_t numOfMouseButtonBytes = this->getMouseButtonCount() / 8;
+    if (getMouseButtonPaddingBits() > 0)
+    {
+        numOfMouseButtonBytes++;
+    }
+
+    return numOfMouseButtonBytes;
 }

@@ -1,9 +1,11 @@
 #ifndef ESP32_BLE_MOUSE_CONFIG_H
 #define ESP32_BLE_MOUSE_CONFIG_H
 
-#include "BaseCompositeDeviceConfiguration.h"
+#include <BaseCompositeDevice.h>
+#include <MouseConfiguration.h>
 
 #define MOUSE_REPORT_ID 0x02
+#define MOUSE_DEVICE_NAME "Mouse"
 
 #define MOUSE_LOGICAL_LEFT_BUTTON 0x01
 #define MOUSE_LOGICAL_RIGHT_BUTTON 0x02
@@ -16,7 +18,7 @@
 
 // Keyboard
 
-class MouseConfiguration : public CompositeDeviceConfiguration
+class MouseConfiguration : public BaseCompositeDeviceConfiguration
 {
 private:
     uint16_t _buttonCount;
@@ -26,8 +28,10 @@ private:
 public:
     MouseConfiguration();
 
+    const char* getDeviceName() override;
     uint8_t getDeviceReportSize() override;
-    void makeDeviceReport(uint8* buffer, size_t size) override;
+    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
+    uint8_t getMouseButtonNumBytes();
 
     uint16_t getMouseButtonCount();
     uint16_t getMouseAxisCount();
@@ -36,7 +40,6 @@ public:
 
 private:
     uint8_t getMouseButtonPaddingBits();
-
 };
 
 #endif

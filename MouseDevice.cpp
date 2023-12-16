@@ -1,9 +1,8 @@
 #include "MouseDevice.h"
+#include "BleCompositeHID.h"
 
-MouseDevice::MouseDevice(MouseConfiguration* config, NimBLECharacteristic* inputCharacteristic = nullptr, NimBLECharacteristic* outputCharacteristic = nullptr):
-    config(*config), // Copy config to avoid modification
-    _input(inputCharacteristic),
-    _output(outputCharacteristic),
+MouseDevice::MouseDevice(const MouseConfiguration& config):
+    _config(config), // Copy config to avoid modification
     _mouseButtons(),
     _mouseX(0),
     _mouseY(0),
@@ -11,6 +10,16 @@ MouseDevice::MouseDevice(MouseConfiguration* config, NimBLECharacteristic* input
     _mouseHWheel(0)
 {
     this->resetButtons();
+}
+
+void MouseDevice::init(NimBLEHIDDevice* hid)
+{
+    setCharacteristics(hid->inputReport(_config.getReportId()), nullptr);
+}
+
+BaseCompositeDeviceConfiguration* MouseDevice::getDeviceConfig()
+{
+    return &_config;
 }
 
 void MouseDevice::resetButtons()
@@ -94,18 +103,24 @@ void MouseDevice::mouseMove(signed char x, signed char y, signed char scrollX, s
 
 void MouseDevice::sendMouseReport()
 {
-    if (!_input || !this->isConnected())
+    auto input = getInput();
+    auto parentDevice = this->getParent();
+
+    if (!input || !parentDevice)
         return;
     
+    if(!parentDevice->isConnected())
+        return;
+
     uint8_t mouse_report[_config.getDeviceReportSize()];
     uint8_t currentReportIndex = 0;
 
     memset(&mouse_report, 0, sizeof(mouse_report));
     memcpy(&mouse_report, &_mouseButtons, sizeof(_mouseButtons));
-    currentReportIndex += numOfMouseButtonBytes;
+    currentReportIndex += _config.getMouseButtonNumBytes();
 
     // TODO: Make dynamic based on axis counts
-    if (configuration.getMouseAxisCount() > 0)
+    if (_config.getMouseAxisCount() > 0)
     {
         mouse_report[currentReportIndex++] = _mouseX;
         mouse_report[currentReportIndex++] = _mouseY;
@@ -113,6 +128,6 @@ void MouseDevice::sendMouseReport()
         mouse_report[currentReportIndex++] = _mouseHWheel;
     }
 
-    this->_input->setValue(mouse_report, sizeof(mouse_report));
-    this->_input->notify();
+    input->setValue(mouse_report, sizeof(mouse_report));
+    input->notify();
 }

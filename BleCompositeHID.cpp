@@ -1,3 +1,6 @@
+#include <sstream>
+#include <iostream>
+#include <iomanip>
 #include <NimBLEDevice.h>
 #include <NimBLEUtils.h>
 #include <NimBLEServer.h>
@@ -24,11 +27,7 @@ static const char *LOG_TAG = "BLECompositeHID";
 #define CHARACTERISTIC_UUID_SOFTWARE_REVISION  "2A28"      // Characteristic - Software Revision String - 0x2A28
 #define CHARACTERISTIC_UUID_SERIAL_NUMBER      "2A25"      // Characteristic - Serial Number String - 0x2A25
 #define CHARACTERISTIC_UUID_FIRMWARE_REVISION  "2A26"      // Characteristic - Firmware Revision String - 0x2A26
-#define CHARACTERISTIC_UUID_HARDWARE_REVISION  "2A27"      // Characteristic - Hardware Revision String - 0x2A27
-
-
-// uint8_t tempHidReportDescriptor[150];
-// int hidReportDescriptorSize = 0;
+#define CHARACTERISTIC_UUID_HARDWARE_REVISION  "2A27"      // Characteristic - Hardware Revision String - 0x2A27\
 
 uint16_t vid;
 uint16_t pid;
@@ -43,27 +42,27 @@ std::string serialNumber;
 std::string firmwareRevision;
 std::string hardwareRevision;
 
-BleCompositeHID::BleCompositeHID(std::string deviceName, std::string deviceManufacturer, uint8_t batteryLevel) : hid(nullptr)
+BleCompositeHID::BleCompositeHID(std::string deviceName, std::string deviceManufacturer, uint8_t batteryLevel) : _hid(nullptr)
 {
     this->deviceName = deviceName;
     this->deviceManufacturer = deviceManufacturer;
     this->batteryLevel = batteryLevel;
-    this->connectionStatus = new BleConnectionStatus();
+    this->_connectionStatus = new BleConnectionStatus();
 }
 
-void BleCompositeHID::begin(BleCompositeHIDConfiguration *config)
+void BleCompositeHID::begin(const BLEHostConfiguration& config)
 {
-    configuration = *config; // we make a copy, so the user can't change actual values midway through operation, without calling the begin function again
+    _configuration = config; // we make a copy, so the user can't change actual values midway through operation, without calling the begin function again
 
-    modelNumber = configuration.getModelNumber();
-    softwareRevision = configuration.getSoftwareRevision();
-    serialNumber = configuration.getSerialNumber();
-    firmwareRevision = configuration.getFirmwareRevision();
-    hardwareRevision = configuration.getHardwareRevision();
+    modelNumber = _configuration.getModelNumber();
+    softwareRevision = _configuration.getSoftwareRevision();
+    serialNumber = _configuration.getSerialNumber();
+    firmwareRevision = _configuration.getFirmwareRevision();
+    hardwareRevision = _configuration.getHardwareRevision();
 
-	vid = configuration.getVid();
-	pid = configuration.getPid();
-	guidVersion = configuration.getGuidVersion();
+	vid = _configuration.getVid();
+	pid = _configuration.getPid();
+	guidVersion = _configuration.getGuidVersion();
 
 	uint8_t high = highByte(vid);
 	uint8_t low = lowByte(vid);
@@ -86,27 +85,33 @@ void BleCompositeHID::end(void)
 {
 }
 
-bool BleCompositeHID::isConnected(void)
+void BleCompositeHID::addDevice(BaseCompositeDevice *device)
 {
-    return this->connectionStatus->connected;
+    device->_parent = this;
+    _devices.push_back(device);
+}
+
+bool BleCompositeHID::isConnected()
+{
+    return this->_connectionStatus->connected;
 }
 
 void BleCompositeHID::setBatteryLevel(uint8_t level)
 {
     this->batteryLevel = level;
-    if (hid != 0)
+    if (this->_hid)
     {
-        this->hid->setBatteryLevel(this->batteryLevel);
+        this->_hid->setBatteryLevel(this->batteryLevel);
 
         if (this->isConnected())
         {
-            this->hid->batteryLevel()->notify();
+            this->_hid->batteryLevel()->notify();
         }
 		
-        if (configuration.getAutoReport())
-        {
-            sendGamepadReport();
-        }
+        // if (this->_configuration.getAutoReport())
+        // {
+        //     // TODO: Send report?
+        // }
     }
 }
 
@@ -121,19 +126,29 @@ void BleCompositeHID::taskServer(void *pvParameter)
     
     NimBLEDevice::init(BleCompositeHIDInstance->deviceName);
     NimBLEServer *pServer = NimBLEDevice::createServer();
-    pServer->setCallbacks(BleCompositeHIDInstance->connectionStatus);
+    pServer->setCallbacks(BleCompositeHIDInstance->_connectionStatus);
 
-    BleCompositeHIDInstance->hid = new NimBLEHIDDevice(pServer);
-    
-    // Set up gamepad HID device
-    BleCompositeHIDInstance->inputGamepad = BleCompositeHIDInstance->hid->inputReport(BleCompositeHIDInstance->configuration.getGamepadHidReportId()); // <-- input REPORTID from report map
-    BleCompositeHIDInstance->connectionStatus->inputGamepad = BleCompositeHIDInstance->inputGamepad;
+    BleCompositeHIDInstance->_hid = new NimBLEHIDDevice(pServer);
 
-    // Set up mouse HID device
-    BleCompositeHIDInstance->inputMouse = BleCompositeHIDInstance->hid->inputReport(BleCompositeHIDInstance->configuration.getMouseHidReportId()); // <-- input REPORTID from report map
-    BleCompositeHIDInstance->connectionStatus->inputMouse = BleCompositeHIDInstance->inputMouse;
+    // Setup the HID descriptor buffers
+    size_t totalBufferSize = 1024;
+    uint8_t tempHidReportDescriptor[totalBufferSize];
+    int hidReportDescriptorSize = 0;
 
-    BleCompositeHIDInstance->hid->manufacturer()->setValue(BleCompositeHIDInstance->deviceManufacturer);
+    // Setup child devices
+    for(auto device : BleCompositeHIDInstance->_devices){
+        device->init(BleCompositeHIDInstance->_hid);
+        size_t reportSize = device->getDeviceConfig()->makeDeviceReport(tempHidReportDescriptor + hidReportDescriptorSize, totalBufferSize);
+        if(reportSize < 0){
+            char msg[255];
+            snprintf(msg, sizeof(msg), "Error creating report for device %s", device->getDeviceConfig()->getDeviceName());
+            ESP_LOGE(LOG_TAG, msg);
+            break;
+        }
+        hidReportDescriptorSize += reportSize;
+    }
+
+    BleCompositeHIDInstance->_hid->manufacturer()->setValue(BleCompositeHIDInstance->deviceManufacturer);
 
     NimBLEService *pService = pServer->getServiceByUUID(SERVICE_UUID_DEVICE_INFORMATION);
 	
@@ -167,28 +182,33 @@ void BleCompositeHID::taskServer(void *pvParameter)
     );
     pCharacteristic_Hardware_Revision->setValue(hardwareRevision);
 
-    BleCompositeHIDInstance->hid->pnp(0x01, vid, pid, guidVersion);
-    BleCompositeHIDInstance->hid->hidInfo(0x00, 0x01);
+    BleCompositeHIDInstance->_hid->pnp(0x01, vid, pid, guidVersion);
+    BleCompositeHIDInstance->_hid->hidInfo(0x00, 0x01);
 
     NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
 
     uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
     memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
 
-    // Testing
-    for (int i = 0; i < hidReportDescriptorSize; i++)
-       Serial.printf("%02x", customHidReportDescriptor[i]);
-
-    BleCompositeHIDInstance->hid->reportMap((uint8_t *)customHidReportDescriptor, hidReportDescriptorSize);
-    BleCompositeHIDInstance->hid->startServices();
+    // Debug
+    std::stringstream ss;
+    ss << std::hex;
+    for( size_t idx = 0; idx < hidReportDescriptorSize; ++idx ){
+        ss << std::setw(2) << std::setfill('0') << (int)customHidReportDescriptor[idx];
+    }
+    ESP_LOGD(LOG_TAG, "Broadcasting HID report descriptor: ");
+    ESP_LOGD(LOG_TAG, ss.str());
+    
+    BleCompositeHIDInstance->_hid->reportMap((uint8_t *)customHidReportDescriptor, hidReportDescriptorSize);
+    BleCompositeHIDInstance->_hid->startServices();
 
     BleCompositeHIDInstance->onStarted(pServer);
 
     NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
     pAdvertising->setAppearance(GENERIC_HID);
-    pAdvertising->addServiceUUID(BleCompositeHIDInstance->hid->hidService()->getUUID());
+    pAdvertising->addServiceUUID(BleCompositeHIDInstance->_hid->hidService()->getUUID());
     pAdvertising->start();
-    BleCompositeHIDInstance->hid->setBatteryLevel(BleCompositeHIDInstance->batteryLevel);
+    BleCompositeHIDInstance->_hid->setBatteryLevel(BleCompositeHIDInstance->batteryLevel);
 
     ESP_LOGD(LOG_TAG, "Advertising started!");
     vTaskDelay(portMAX_DELAY); // delay(portMAX_DELAY);

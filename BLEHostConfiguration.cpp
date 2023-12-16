@@ -1,6 +1,6 @@
 #include "BLEHostConfiguration.h"
 
-BLEHostConfiguration::BLEHostConfiguration(reportId) :
+BLEHostConfiguration::BLEHostConfiguration() :
     _vid(0xe502),
     _pid(0xbbab),
     _guidVersion(0x0110),
