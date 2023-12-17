@@ -42,6 +42,18 @@ std::string serialNumber;
 std::string firmwareRevision;
 std::string hardwareRevision;
 
+std::string uint8_to_hex_string(const uint8_t *v, const size_t s) {
+  std::stringstream ss;
+
+  ss << std::hex << std::setfill('0');
+
+  for (int i = 0; i < s; i++) {
+    ss << std::hex << std::setw(2) << static_cast<int>(v[i]);
+  }
+
+  return ss.str();
+}
+
 BleCompositeHID::BleCompositeHID(std::string deviceName, std::string deviceManufacturer, uint8_t batteryLevel) : _hid(nullptr)
 {
     this->deviceName = deviceName;
@@ -140,13 +152,18 @@ void BleCompositeHID::taskServer(void *pvParameter)
         device->init(BleCompositeHIDInstance->_hid);
         size_t reportSize = device->getDeviceConfig()->makeDeviceReport(tempHidReportDescriptor + hidReportDescriptorSize, totalBufferSize);
         if(reportSize < 0){
-            char msg[255];
-            snprintf(msg, sizeof(msg), "Error creating report for device %s", device->getDeviceConfig()->getDeviceName());
-            ESP_LOGE(LOG_TAG, msg);
+            ESP_LOGE(LOG_TAG, "Error creating report for device %s", device->getDeviceConfig()->getDeviceName());
             break;
+        } else {
+            std::string hexbuf = uint8_to_hex_string(tempHidReportDescriptor + hidReportDescriptorSize, reportSize);
+            ESP_LOGD(LOG_TAG, "Created device %s with report size %d and HID report descriptor: %s", device->getDeviceConfig()->getDeviceName(), reportSize, hexbuf);
         }
         hidReportDescriptorSize += reportSize;
     }
+    ESP_LOGD(LOG_TAG, "Final hidReportDescriptorSize: %d", hidReportDescriptorSize);
+
+    uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
+    memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
 
     BleCompositeHIDInstance->_hid->manufacturer()->setValue(BleCompositeHIDInstance->deviceManufacturer);
 
@@ -187,17 +204,15 @@ void BleCompositeHID::taskServer(void *pvParameter)
 
     NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
 
-    uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
-    memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
+    // uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
+    // memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
 
     // Debug
     std::stringstream ss;
-    ss << std::hex;
     for( size_t idx = 0; idx < hidReportDescriptorSize; ++idx ){
-        ss << std::setw(2) << std::setfill('0') << (int)customHidReportDescriptor[idx];
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)customHidReportDescriptor[idx];
     }
-    ESP_LOGD(LOG_TAG, "Broadcasting HID report descriptor: ");
-    ESP_LOGD(LOG_TAG, ss.str());
+    ESP_LOGD(LOG_TAG, "Broadcasting HID report descriptor: %s", ss.str());
     
     BleCompositeHIDInstance->_hid->reportMap((uint8_t *)customHidReportDescriptor, hidReportDescriptorSize);
     BleCompositeHIDInstance->_hid->startServices();
