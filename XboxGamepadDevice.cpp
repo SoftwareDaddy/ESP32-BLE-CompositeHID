@@ -15,7 +15,18 @@ XboxGamepadCallbacks::XboxGamepadCallbacks(XboxGamepadDevice* device) : _device(
 
 void XboxGamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
 {
-    ESP_LOGI(LOG_TAG, "XboxGamepadCallbacks::onWrite, value: %s, size: %d", pCharacteristic->getValue().c_str(), pCharacteristic->getValue().size());
+    ESP_LOGI(LOG_TAG, "XboxGamepadCallbacks::onWrite, size: %d", pCharacteristic->getValue().size());
+    
+    // ESP32 is little endian, so we need to reverse the bytes
+    uint64_t value = pCharacteristic->getValue<uint64_t>();
+    uint8_t dcEnableActuators = (value >> 64);
+    uint32_t magnitude = (value >> 24) & 0xFFFFFF;
+    uint8_t duration = (value >> 16) & 0xFF;
+    uint8_t startDelay = (value >> 8) & 0xFF;
+    uint8_t loopCount = value & 0xFF;
+    ESP_LOGI(LOG_TAG, "XboxGamepadCallbacks::onWrite parsing DC enable: %d, magnitude: %d, duration: %d, start delay: %d, loop count: %d", dcEnableActuators, magnitude, duration, startDelay, loopCount);
+
+    _device->onVibrate.fire(pCharacteristic->getValue<XboxGamepadOutputReportData>());
 }
 
 void XboxGamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic)
@@ -49,7 +60,6 @@ uint8_t XboxGamepadDeviceConfiguration::getDeviceReportSize() {
     // 1 * 4bit for hat switch + 4bit padding (1 byte)          = 1 byte
     // 15 * 1bit for buttons + 1bit padding (2 bytes)           = 2 bytes
     // 1 * 1bit for record button + 7bit padding (1 byte)       = 1 byte
-    return 16;
 
     // Additional input?
     // 1 * 1bit + 7bit padding (1 byte)                         = 1 byte
@@ -59,6 +69,8 @@ uint8_t XboxGamepadDeviceConfiguration::getDeviceReportSize() {
     // 1 * 4bit for DC Enable Actuators + 4bit padding (1 byte) = 1 byte
     // 4 * 8bit for Magnitude (4 bytes)                         = 4 bytes
     // 3 * 8bit for Duration, Start Delay, Loop Count (3 bytes) = 3 bytes
+
+    return sizeof(XboxGamepadInputReportData);
 }
 
 size_t XboxGamepadDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) {

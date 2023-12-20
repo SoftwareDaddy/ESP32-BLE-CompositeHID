@@ -8,6 +8,11 @@ int ledPin = 5; // LED connected to digital pin 13
 XboxGamepadDevice *gamepad;
 BleCompositeHID* compositeHID;
 
+void OnVibrateEvent(XboxGamepadOutputReportData data)
+{
+    Serial.println("Vibrate event DC enable: " + String(data.dcEnableActuators) + " Magnitude: " + String(data.magnitude) + " Duration: " + String(data.duration) + " Start delay: " + String(data.startDelay) + " Loop count: " + String(data.loopCount));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -16,8 +21,11 @@ void setup()
     // Set up gamepad
     XboxGamepadDeviceConfiguration gamepadConfig(0x01);
     gamepad = new XboxGamepadDevice(gamepadConfig);
-    Serial.println("Created xbox gamepad device");
+    
+    FunctionSlot<XboxGamepadOutputReportData> ptrSlot(OnVibrateEvent);
+    gamepad->onVibrate.attach(ptrSlot);
 
+    // Set up composite HID device
     compositeHID = new BleCompositeHID("Xbox Wireless Controller", "Microsoft", 100);
     
     // Add both devices to the composite HID device to manage them
