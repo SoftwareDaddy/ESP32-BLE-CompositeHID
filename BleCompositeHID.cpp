@@ -62,6 +62,11 @@ BleCompositeHID::BleCompositeHID(std::string deviceName, std::string deviceManuf
     this->_connectionStatus = new BleConnectionStatus();
 }
 
+BleCompositeHID::~BleCompositeHID()
+{
+    delete this->_connectionStatus;
+}
+
 void BleCompositeHID::begin(const BLEHostConfiguration& config)
 {
     _configuration = config; // we make a copy, so the user can't change actual values midway through operation, without calling the begin function again
@@ -143,7 +148,7 @@ void BleCompositeHID::taskServer(void *pvParameter)
     BleCompositeHIDInstance->_hid = new NimBLEHIDDevice(pServer);
 
     // Setup the HID descriptor buffers
-    size_t totalBufferSize = 1024;
+    size_t totalBufferSize = BLE_ATT_ATTR_MAX_LEN;
     uint8_t tempHidReportDescriptor[totalBufferSize];
     int hidReportDescriptorSize = 0;
 

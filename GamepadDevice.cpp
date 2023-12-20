@@ -1,8 +1,41 @@
 #include "GamepadDevice.h"
 #include "BleCompositeHID.h"
 
+#if defined(CONFIG_ARDUHAL_ESP_LOG)
+#include "esp32-hal-log.h"
+#define LOG_TAG "GamepadDevice"
+#else
+#include "esp_log.h"
+static const char *LOG_TAG = "GamepadDevice";
+#endif
+
+GamepadCallbacks::GamepadCallbacks(GamepadDevice* device) : _device(device)
+{
+}
+
+void GamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
+{
+    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onWrite, value: %s", pCharacteristic->getValue().c_str());
+}
+
+void GamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic)
+{
+    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onRead");
+}
+
+void GamepadCallbacks::onNotify(NimBLECharacteristic* pCharacteristic)
+{
+    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onNotify");
+}
+
+void GamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code)
+{
+    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onStatus, status: %d, code: %d", status, code);
+}
+
+
 GamepadDevice::GamepadDevice(const GamepadConfiguration& config):
-    _config(config), // Copy config to avoid modification
+    _config(config), 
     _buttons(),
     _specialButtons(),
     _x(0),
@@ -21,14 +54,46 @@ GamepadDevice::GamepadDevice(const GamepadConfiguration& config):
     _hat1(0),
     _hat2(0),
     _hat3(0),
-    _hat4(0)
+    _hat4(0),
+    _callbacks(nullptr),
+    _setEffectCharacteristic(nullptr),
+    _setEnvelopeCharacteristic(nullptr),
+    _setConditionCharacteristic(nullptr),
+    _setPeriodicCharacteristic(nullptr),
+    _setConstantCharacteristic(nullptr),
+    _setRampCharacteristic(nullptr),
+    _setCustomForceCharacteristic(nullptr),
+    _downloadForceCharacteristic(nullptr),
+    _effectOperationCharacteristic(nullptr),
+    _pidDeviceControlCharacteristic(nullptr),
+    _deviceGainCharacteristic(nullptr),
+    _pidState(nullptr),
+    _createNewEffect(nullptr),
+    _pidBlockLoad(nullptr),
+    _pidPool(nullptr)
 {
     this->resetButtons();
 }
 
+GamepadDevice::~GamepadDevice()
+{
+    if (getOutput() && _callbacks){
+        getOutput()->setCallbacks(nullptr);
+        delete _callbacks;
+    }
+}
+
 void GamepadDevice::init(NimBLEHIDDevice* hid)
 {
-    setCharacteristics(hid->inputReport(_config.getReportId()), nullptr);
+    // Create input characteristic to send events to the computer
+    auto input = hid->inputReport(GAMEPAD_REPORT_ID);
+
+    // Create output characteristic to handle events coming from the computer
+    auto output = hid->outputReport(FORCE_FEEDBACK_REPORT_ID);
+    _callbacks = new GamepadCallbacks(this);
+    output->setCallbacks(_callbacks);
+
+    setCharacteristics(input, output);
 }
 
 BaseCompositeDeviceConfiguration* GamepadDevice::getDeviceConfig()

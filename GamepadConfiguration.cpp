@@ -1,5 +1,13 @@
 #include "GamepadConfiguration.h"
 
+#if defined(CONFIG_ARDUHAL_ESP_LOG)
+#include "esp32-hal-log.h"
+#define LOG_TAG "GamepadConfiguration"
+#else
+#include "esp_log.h"
+static const char *LOG_TAG = "GamepadConfiguration";
+#endif
+
 GamepadConfiguration::GamepadConfiguration() : 
     BaseCompositeDeviceConfiguration(GAMEPAD_REPORT_ID),
     _controllerType(CONTROLLER_TYPE_GAMEPAD),
@@ -11,7 +19,8 @@ GamepadConfiguration::GamepadConfiguration() :
     _axesMin(0x0000),
     _axesMax(0x7FFF),
     _simulationMin(0x0000),
-    _simulationMax(0x7FFF)
+    _simulationMax(0x7FFF),
+    _includeRumble(false)
 {
 }
 
@@ -34,7 +43,7 @@ size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize
 {
     // Report description START -------------------------------------------------
 
-    uint8_t tempHidReportDescriptor[150];
+    uint8_t tempHidReportDescriptor[BLE_ATT_ATTR_MAX_LEN];
     size_t reportSize = 0;
 
     // USAGE_PAGE (Generic Desktop)
@@ -48,427 +57,434 @@ size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize
     // COLLECTION (Application)
     tempHidReportDescriptor[reportSize++] = COLLECTION(1); //0xa1;
     tempHidReportDescriptor[reportSize++] = 0x01;
-
-    // REPORT_ID (Gamepad)
-    tempHidReportDescriptor[reportSize++] = REPORT_ID(1);
-    tempHidReportDescriptor[reportSize++] = this->getReportId();
-
-    if (this->getButtonCount() > 0)
     {
-        // USAGE_PAGE (Button)
-        tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); //0x05;
-        tempHidReportDescriptor[reportSize++] = 0x09;
+        // REPORT_ID (Gamepad)
+        tempHidReportDescriptor[reportSize++] = REPORT_ID(1);
+        tempHidReportDescriptor[reportSize++] = this->getReportId();
 
-        // LOGICAL_MINIMUM (0)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(1);//0x15;
-        tempHidReportDescriptor[reportSize++] = 0x00;
-
-        // LOGICAL_MAXIMUM (1)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(1); //0x25;
-        tempHidReportDescriptor[reportSize++] = 0x01;
-
-        // REPORT_SIZE (1)
-        tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
-        tempHidReportDescriptor[reportSize++] = 0x01;
-
-        // USAGE_MINIMUM (Button 1)
-        tempHidReportDescriptor[reportSize++] = USAGE_MINIMUM(1);//0x19;
-        tempHidReportDescriptor[reportSize++] = 0x01;
-
-        // USAGE_MAXIMUM (Up to 128 buttons possible)
-        tempHidReportDescriptor[reportSize++] = USAGE_MAXIMUM(1);//0x29;
-        tempHidReportDescriptor[reportSize++] = this->getButtonCount();
-
-        // REPORT_COUNT (# of buttons)
-        tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-        tempHidReportDescriptor[reportSize++] = this->getButtonCount();
-
-        // INPUT (Data,Var,Abs)
-        tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
-        tempHidReportDescriptor[reportSize++] = 0x02;
-
-        uint8_t buttonPaddingBits = getButtonNumPaddingBits();
-        if (buttonPaddingBits > 0)
+        if (this->getButtonCount() > 0)
         {
+            // USAGE_PAGE (Button)
+            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); //0x05;
+            tempHidReportDescriptor[reportSize++] = 0x09;
+
+            // LOGICAL_MINIMUM (0)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(1);//0x15;
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            // LOGICAL_MAXIMUM (1)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(1); //0x25;
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
             // REPORT_SIZE (1)
             tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
             tempHidReportDescriptor[reportSize++] = 0x01;
 
-            // REPORT_COUNT (# of padding bits)
+            // USAGE_MINIMUM (Button 1)
+            tempHidReportDescriptor[reportSize++] = USAGE_MINIMUM(1);//0x19;
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
+            // USAGE_MAXIMUM (Up to 128 buttons possible)
+            tempHidReportDescriptor[reportSize++] = USAGE_MAXIMUM(1);//0x29;
+            tempHidReportDescriptor[reportSize++] = this->getButtonCount();
+
+            // REPORT_COUNT (# of buttons)
             tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-            tempHidReportDescriptor[reportSize++] = buttonPaddingBits;
+            tempHidReportDescriptor[reportSize++] = this->getButtonCount();
 
-            // INPUT (Const,Var,Abs)
-            tempHidReportDescriptor[reportSize++] =  HIDINPUT(1); //0x81;
-            tempHidReportDescriptor[reportSize++] = 0x03;
+            // INPUT (Data,Var,Abs)
+            tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
+            tempHidReportDescriptor[reportSize++] = 0x02;
 
-        } // Padding Bits Needed
+            uint8_t buttonPaddingBits = getButtonNumPaddingBits();
+            if (buttonPaddingBits > 0)
+            {
+                // REPORT_SIZE (1)
+                tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
+                tempHidReportDescriptor[reportSize++] = 0x01;
 
-    } // Buttons
+                // REPORT_COUNT (# of padding bits)
+                tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
+                tempHidReportDescriptor[reportSize++] = buttonPaddingBits;
 
-    if (this->getTotalSpecialButtonCount() > 0)
-    {
-        // LOGICAL_MINIMUM (0)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(1); //0x15;
-        tempHidReportDescriptor[reportSize++] = 0x00;
+                // INPUT (Const,Var,Abs)
+                tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
+                tempHidReportDescriptor[reportSize++] = 0x03;
 
-        // LOGICAL_MAXIMUM (1)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(1); //;0x25;
-        tempHidReportDescriptor[reportSize++] = 0x01;
+            } // Padding Bits Needed
 
-        // REPORT_SIZE (1)
-        tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
-        tempHidReportDescriptor[reportSize++] = 0x01;
+        } // Buttons
 
-        if (this->getDesktopSpecialButtonCount() > 0)
+        if (this->getTotalSpecialButtonCount() > 0)
+        {
+            // LOGICAL_MINIMUM (0)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(1); //0x15;
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            // LOGICAL_MAXIMUM (1)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(1); //;0x25;
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
+            // REPORT_SIZE (1)
+            tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
+            if (this->getDesktopSpecialButtonCount() > 0)
+            {
+                // USAGE_PAGE (Generic Desktop)
+                tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); // 0x05;
+                tempHidReportDescriptor[reportSize++] = 0x01;
+
+                // REPORT_COUNT
+                tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
+                tempHidReportDescriptor[reportSize++] = this->getDesktopSpecialButtonCount();
+                if (this->getIncludeStart())
+                {
+                    // USAGE (Start)
+                    tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                    tempHidReportDescriptor[reportSize++] = 0x3D;
+                }
+
+                if (this->getIncludeSelect())
+                {
+                    // USAGE (Select)
+                    tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                    tempHidReportDescriptor[reportSize++] = 0x3E;
+                }
+
+                if (this->getIncludeMenu())
+                {
+                    // USAGE (App Menu)
+                    tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                    tempHidReportDescriptor[reportSize++] = 0x86;
+                }
+
+                // INPUT (Data,Var,Abs)
+                tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
+                tempHidReportDescriptor[reportSize++] = 0x02;
+            }
+
+            if (this->getConsumerSpecialButtonCount() > 0)
+            {
+                // USAGE_PAGE (Consumer Page)
+                tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); //0x05;
+                tempHidReportDescriptor[reportSize++] = 0x0C;
+
+                // REPORT_COUNT
+                tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
+                tempHidReportDescriptor[reportSize++] = this->getConsumerSpecialButtonCount();
+
+                if (this->getIncludeHome())
+                {
+                    // USAGE (Home)
+                    tempHidReportDescriptor[reportSize++] = USAGE(2); //0x0A;
+                    tempHidReportDescriptor[reportSize++] = 0x23;
+                    tempHidReportDescriptor[reportSize++] = 0x02;
+                }
+
+                if (this->getIncludeBack())
+                {
+                    // USAGE (Back)
+                    tempHidReportDescriptor[reportSize++] = USAGE(2); //0x0A;
+                    tempHidReportDescriptor[reportSize++] = 0x24;
+                    tempHidReportDescriptor[reportSize++] = 0x02;
+                }
+
+                if (this->getIncludeVolumeInc())
+                {
+                    // USAGE (Volume Increment)
+                    tempHidReportDescriptor[reportSize++] =  USAGE(1); //0x09;
+                    tempHidReportDescriptor[reportSize++] = 0xE9;
+                }
+
+                if (this->getIncludeVolumeDec())
+                {
+                    // USAGE (Volume Decrement)
+                    tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                    tempHidReportDescriptor[reportSize++] = 0xEA;
+                }
+
+                if (this->getIncludeVolumeMute())
+                {
+                    // USAGE (Mute)
+                    tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                    tempHidReportDescriptor[reportSize++] = 0xE2;
+                }
+
+                // INPUT (Data,Var,Abs)
+                tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
+                tempHidReportDescriptor[reportSize++] = 0x02;
+            }
+
+            uint8_t specialButtonPaddingBits = getSpecialButtonNumPaddingBits();
+            if (specialButtonPaddingBits > 0)
+            {
+                // REPORT_SIZE (1)
+                tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
+                tempHidReportDescriptor[reportSize++] = 0x01;
+
+                // REPORT_COUNT (# of padding bits)
+                tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
+                tempHidReportDescriptor[reportSize++] = specialButtonPaddingBits;
+
+                // INPUT (Const,Var,Abs)
+                tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
+                tempHidReportDescriptor[reportSize++] = 0x03;
+
+            } // Padding Bits Needed
+
+        } // Special Buttons
+
+        if (this->getAxisCount() > 0)
         {
             // USAGE_PAGE (Generic Desktop)
-            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); // 0x05;
-            tempHidReportDescriptor[reportSize++] = 0x01;
+            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); 0x05;
+            tempHidReportDescriptor[reportSize++] = 0x01; // Generic desktop controls
 
-            // REPORT_COUNT
-            tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-            tempHidReportDescriptor[reportSize++] = this->getDesktopSpecialButtonCount();
-            if (this->getIncludeStart())
-            {
-                // USAGE (Start)
-                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-                tempHidReportDescriptor[reportSize++] = 0x3D;
-            }
+            // USAGE (Pointer)
+            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+            tempHidReportDescriptor[reportSize++] = 0x01; 
 
-            if (this->getIncludeSelect())
-            {
-                // USAGE (Select)
-                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-                tempHidReportDescriptor[reportSize++] = 0x3E;
-            }
+            // LOGICAL_MINIMUM (-32767)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(2); //0x16;
+            tempHidReportDescriptor[reportSize++] = lowByte(this->getAxesMin());
+            tempHidReportDescriptor[reportSize++] = highByte(this->getAxesMin());
+            //tempHidReportDescriptor[reportSize++] = 0x00;		// Use these two lines for 0 min
+            //tempHidReportDescriptor[reportSize++] = 0x00;
+                //tempHidReportDescriptor[reportSize++] = 0x01;	// Use these two lines for -32767 min
+            //tempHidReportDescriptor[reportSize++] = 0x80;
 
-            if (this->getIncludeMenu())
-            {
-                // USAGE (App Menu)
-                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-                tempHidReportDescriptor[reportSize++] = 0x86;
-            }
+            // LOGICAL_MAXIMUM (+32767)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(2);//0x26;
+            tempHidReportDescriptor[reportSize++] = lowByte(this->getAxesMax());
+            tempHidReportDescriptor[reportSize++] = highByte(this->getAxesMax());
+            //tempHidReportDescriptor[reportSize++] = 0xFF;	// Use these two lines for 255 max
+            //tempHidReportDescriptor[reportSize++] = 0x00;
+                //tempHidReportDescriptor[reportSize++] = 0xFF;	// Use these two lines for +32767 max
+            //tempHidReportDescriptor[reportSize++] = 0x7F;
 
-            // INPUT (Data,Var,Abs)
-            tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
-            tempHidReportDescriptor[reportSize++] = 0x02;
-        }
-
-        if (this->getConsumerSpecialButtonCount() > 0)
-        {
-            // USAGE_PAGE (Consumer Page)
-            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); //0x05;
-            tempHidReportDescriptor[reportSize++] = 0x0C;
-
-            // REPORT_COUNT
-            tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-            tempHidReportDescriptor[reportSize++] = this->getConsumerSpecialButtonCount();
-
-            if (this->getIncludeHome())
-            {
-                // USAGE (Home)
-                tempHidReportDescriptor[reportSize++] = USAGE(2); //0x0A;
-                tempHidReportDescriptor[reportSize++] = 0x23;
-                tempHidReportDescriptor[reportSize++] = 0x02;
-            }
-
-            if (this->getIncludeBack())
-            {
-                // USAGE (Back)
-                tempHidReportDescriptor[reportSize++] = USAGE(2); //0x0A;
-                tempHidReportDescriptor[reportSize++] = 0x24;
-                tempHidReportDescriptor[reportSize++] = 0x02;
-            }
-
-            if (this->getIncludeVolumeInc())
-            {
-                // USAGE (Volume Increment)
-                tempHidReportDescriptor[reportSize++] =  USAGE(1); //0x09;
-                tempHidReportDescriptor[reportSize++] = 0xE9;
-            }
-
-            if (this->getIncludeVolumeDec())
-            {
-                // USAGE (Volume Decrement)
-                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-                tempHidReportDescriptor[reportSize++] = 0xEA;
-            }
-
-            if (this->getIncludeVolumeMute())
-            {
-                // USAGE (Mute)
-                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-                tempHidReportDescriptor[reportSize++] = 0xE2;
-            }
-
-            // INPUT (Data,Var,Abs)
-            tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
-            tempHidReportDescriptor[reportSize++] = 0x02;
-        }
-
-        uint8_t specialButtonPaddingBits = getSpecialButtonNumPaddingBits();
-        if (specialButtonPaddingBits > 0)
-        {
-            // REPORT_SIZE (1)
+            // REPORT_SIZE (16)
             tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
+            tempHidReportDescriptor[reportSize++] = 0x10;
+
+            // REPORT_COUNT (this->getAxisCount())
+            tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
+            tempHidReportDescriptor[reportSize++] = this->getAxisCount();
+
+            // COLLECTION (Physical)
+            tempHidReportDescriptor[reportSize++] = COLLECTION(1); //0xA1;
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            if (this->getIncludeXAxis())
+            {
+                // USAGE (X)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x30;
+            }
+
+            if (this->getIncludeYAxis())
+            {
+                // USAGE (Y)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x31;
+            }
+
+            if (this->getIncludeZAxis())
+            {
+                // USAGE (Z)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x32;
+            }
+
+            if (this->getIncludeRzAxis())
+            {
+                // USAGE (Rz)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x35;
+            }
+
+            if (this->getIncludeRxAxis())
+            {
+                // USAGE (Rx)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x33;
+            }
+
+            if (this->getIncludeRyAxis())
+            {
+                // USAGE (Ry)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x34;
+            }
+
+            if (this->getIncludeSlider1())
+            {
+                // USAGE (Slider)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x36;
+            }
+
+            if (this->getIncludeSlider2())
+            {
+                // USAGE (Slider)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0x36;
+            }
+
+            // INPUT (Data,Var,Abs)
+            tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
+            tempHidReportDescriptor[reportSize++] = 0x02;
+
+            // END_COLLECTION (Physical)
+            tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); //0xc0;
+
+        } // X, Y, Z, Rx, Ry, and Rz Axis
+
+        if (this->getSimulationCount() > 0)
+        {
+            // USAGE_PAGE (Simulation Controls)
+            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); //0x05;
+            tempHidReportDescriptor[reportSize++] = 0x02;
+
+            // LOGICAL_MINIMUM (-32767)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(2); //0x16;
+            tempHidReportDescriptor[reportSize++] = lowByte(this->getSimulationMin());
+            tempHidReportDescriptor[reportSize++] = highByte(this->getSimulationMin());
+            //tempHidReportDescriptor[reportSize++] = 0x00;		// Use these two lines for 0 min
+            //tempHidReportDescriptor[reportSize++] = 0x00;
+            //tempHidReportDescriptor[reportSize++] = 0x01;	    // Use these two lines for -32767 min
+            //tempHidReportDescriptor[reportSize++] = 0x80;
+
+            // LOGICAL_MAXIMUM (+32767)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(2); //0x26;
+            tempHidReportDescriptor[reportSize++] = lowByte(this->getSimulationMax());
+            tempHidReportDescriptor[reportSize++] = highByte(this->getSimulationMax());
+            //tempHidReportDescriptor[reportSize++] = 0xFF;	    // Use these two lines for 255 max
+            //tempHidReportDescriptor[reportSize++] = 0x00;
+            //tempHidReportDescriptor[reportSize++] = 0xFF;		// Use these two lines for +32767 max
+            //tempHidReportDescriptor[reportSize++] = 0x7F;
+
+            // REPORT_SIZE (16)
+            tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
+            tempHidReportDescriptor[reportSize++] = 0x10;
+
+            // REPORT_COUNT (this->getSimulationCount())
+            tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
+            tempHidReportDescriptor[reportSize++] = this->getSimulationCount();
+
+            // COLLECTION (Physical)
+            tempHidReportDescriptor[reportSize++] = COLLECTION(1); //0xA1;
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            if (this->getIncludeRudder())
+            {
+                // USAGE (Rudder)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0xBA;
+            }
+
+            if (this->getIncludeThrottle())
+            {
+                // USAGE (Throttle)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0xBB;
+            }
+
+            if (this->getIncludeAccelerator())
+            {
+                // USAGE (Accelerator)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0xC4;
+            }
+
+            if (this->getIncludeBrake())
+            {
+                // USAGE (Brake)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0xC5;
+            }
+
+            if (this->getIncludeSteering())
+            {
+                // USAGE (Steering)
+                tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
+                tempHidReportDescriptor[reportSize++] = 0xC8;
+            }
+
+            // INPUT (Data,Var,Abs)
+            tempHidReportDescriptor[reportSize++] = HIDINPUT(1); 0x81;
+            tempHidReportDescriptor[reportSize++] = 0x02;
+
+            // END_COLLECTION (Physical)
+            tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); //0xc0;
+
+        } // Simulation Controls
+
+        if (this->getHatSwitchCount() > 0)
+        {
+
+            // COLLECTION (Physical)
+            tempHidReportDescriptor[reportSize++] = COLLECTION(1); //0xA1;
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            // USAGE_PAGE (Generic Desktop)
+            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1);
             tempHidReportDescriptor[reportSize++] = 0x01;
 
-            // REPORT_COUNT (# of padding bits)
+            // USAGE (Hat Switch)
+            for (int currentHatIndex = 0; currentHatIndex < this->getHatSwitchCount(); currentHatIndex++)
+            {
+                tempHidReportDescriptor[reportSize++] = USAGE(1);
+                tempHidReportDescriptor[reportSize++] = 0x39;
+            }
+
+            // Logical Min (1)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(1); //0x15;
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
+            // Logical Max (8)
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(1); //0x25;
+            tempHidReportDescriptor[reportSize++] = 0x08;
+
+            // Physical Min (0)
+            tempHidReportDescriptor[reportSize++] = PHYSICAL_MINIMUM(1); //0x35;
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            // Physical Max (315)
+            tempHidReportDescriptor[reportSize++] = PHYSICAL_MAXIMUM(2); //0x46;
+            tempHidReportDescriptor[reportSize++] = 0x3B;
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
+            // Unit (SI Rot : Ang Pos)
+            tempHidReportDescriptor[reportSize++] = UNIT(1); //0x65;
+            tempHidReportDescriptor[reportSize++] = 0x12;
+
+            // Report Size (8)
+            tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
+            tempHidReportDescriptor[reportSize++] = 0x08;
+
+            // Report Count (4)
             tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-            tempHidReportDescriptor[reportSize++] = specialButtonPaddingBits;
+            tempHidReportDescriptor[reportSize++] = this->getHatSwitchCount();
 
-            // INPUT (Const,Var,Abs)
+            // Input (Data, Variable, Absolute)
             tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
-            tempHidReportDescriptor[reportSize++] = 0x03;
+            tempHidReportDescriptor[reportSize++] = 0x42;
 
-        } // Padding Bits Needed
-
-    } // Special Buttons
-
-    if (this->getAxisCount() > 0)
-    {
-        // USAGE_PAGE (Generic Desktop)
-        tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); 0x05;
-        tempHidReportDescriptor[reportSize++] = 0x01; // Generic desktop controls
-
-        // USAGE (Pointer)
-        tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-        tempHidReportDescriptor[reportSize++] = 0x01;
-
-        // LOGICAL_MINIMUM (-32767)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(2); //0x16;
-        tempHidReportDescriptor[reportSize++] = lowByte(this->getAxesMin());
-        tempHidReportDescriptor[reportSize++] = highByte(this->getAxesMin());
-        //tempHidReportDescriptor[reportSize++] = 0x00;		// Use these two lines for 0 min
-        //tempHidReportDescriptor[reportSize++] = 0x00;
-		    //tempHidReportDescriptor[reportSize++] = 0x01;	// Use these two lines for -32767 min
-        //tempHidReportDescriptor[reportSize++] = 0x80;
-
-        // LOGICAL_MAXIMUM (+32767)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(2);//0x26;
-        tempHidReportDescriptor[reportSize++] = lowByte(this->getAxesMax());
-        tempHidReportDescriptor[reportSize++] = highByte(this->getAxesMax());
-        //tempHidReportDescriptor[reportSize++] = 0xFF;	// Use these two lines for 255 max
-        //tempHidReportDescriptor[reportSize++] = 0x00;
-		    //tempHidReportDescriptor[reportSize++] = 0xFF;	// Use these two lines for +32767 max
-        //tempHidReportDescriptor[reportSize++] = 0x7F;
-
-        // REPORT_SIZE (16)
-        tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
-        tempHidReportDescriptor[reportSize++] = 0x10;
-
-        // REPORT_COUNT (this->getAxisCount())
-        tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-        tempHidReportDescriptor[reportSize++] = this->getAxisCount();
-
-        // COLLECTION (Physical)
-        tempHidReportDescriptor[reportSize++] = COLLECTION(1); //0xA1;
-        tempHidReportDescriptor[reportSize++] = 0x00;
-
-        if (this->getIncludeXAxis())
-        {
-            // USAGE (X)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x30;
+            // END_COLLECTION (Physical)
+            tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); //0xc0;
         }
 
-        if (this->getIncludeYAxis())
-        {
-            // USAGE (Y)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x31;
+        if(this->getIncludeRumble()){
+            ESP_LOGI(LOG_TAG, "Start offset: %d, Bytes to copy: %d, Final size: %d", reportSize, sizeof(pidReportDescriptor), reportSize + sizeof(pidReportDescriptor));
+            memcpy(&tempHidReportDescriptor[reportSize], &pidReportDescriptor[0], sizeof(pidReportDescriptor));
+            reportSize += sizeof(pidReportDescriptor) / sizeof(pidReportDescriptor[0]);
         }
-
-        if (this->getIncludeZAxis())
-        {
-            // USAGE (Z)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x32;
-        }
-
-        if (this->getIncludeRzAxis())
-        {
-            // USAGE (Rz)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x35;
-        }
-
-        if (this->getIncludeRxAxis())
-        {
-            // USAGE (Rx)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x33;
-        }
-
-        if (this->getIncludeRyAxis())
-        {
-            // USAGE (Ry)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x34;
-        }
-
-        if (this->getIncludeSlider1())
-        {
-            // USAGE (Slider)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x36;
-        }
-
-        if (this->getIncludeSlider2())
-        {
-            // USAGE (Slider)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0x36;
-        }
-
-        // INPUT (Data,Var,Abs)
-        tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
-        tempHidReportDescriptor[reportSize++] = 0x02;
-
-        // END_COLLECTION (Physical)
-        tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); //0xc0;
-
-    } // X, Y, Z, Rx, Ry, and Rz Axis
-
-    if (this->getSimulationCount() > 0)
-    {
-        // USAGE_PAGE (Simulation Controls)
-        tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); //0x05;
-        tempHidReportDescriptor[reportSize++] = 0x02;
-
-        // LOGICAL_MINIMUM (-32767)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(2); //0x16;
-        tempHidReportDescriptor[reportSize++] = lowByte(this->getSimulationMin());
-        tempHidReportDescriptor[reportSize++] = highByte(this->getSimulationMin());
-        //tempHidReportDescriptor[reportSize++] = 0x00;		// Use these two lines for 0 min
-        //tempHidReportDescriptor[reportSize++] = 0x00;
-		//tempHidReportDescriptor[reportSize++] = 0x01;	    // Use these two lines for -32767 min
-        //tempHidReportDescriptor[reportSize++] = 0x80;
-
-        // LOGICAL_MAXIMUM (+32767)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(2); //0x26;
-        tempHidReportDescriptor[reportSize++] = lowByte(this->getSimulationMax());
-        tempHidReportDescriptor[reportSize++] = highByte(this->getSimulationMax());
-        //tempHidReportDescriptor[reportSize++] = 0xFF;	    // Use these two lines for 255 max
-        //tempHidReportDescriptor[reportSize++] = 0x00;
-		//tempHidReportDescriptor[reportSize++] = 0xFF;		// Use these two lines for +32767 max
-        //tempHidReportDescriptor[reportSize++] = 0x7F;
-
-        // REPORT_SIZE (16)
-        tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
-        tempHidReportDescriptor[reportSize++] = 0x10;
-
-        // REPORT_COUNT (this->getSimulationCount())
-        tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-        tempHidReportDescriptor[reportSize++] = this->getSimulationCount();
-
-        // COLLECTION (Physical)
-        tempHidReportDescriptor[reportSize++] = COLLECTION(1); //0xA1;
-        tempHidReportDescriptor[reportSize++] = 0x00;
-
-        if (this->getIncludeRudder())
-        {
-            // USAGE (Rudder)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0xBA;
-        }
-
-        if (this->getIncludeThrottle())
-        {
-            // USAGE (Throttle)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0xBB;
-        }
-
-        if (this->getIncludeAccelerator())
-        {
-            // USAGE (Accelerator)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0xC4;
-        }
-
-        if (this->getIncludeBrake())
-        {
-            // USAGE (Brake)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0xC5;
-        }
-
-        if (this->getIncludeSteering())
-        {
-            // USAGE (Steering)
-            tempHidReportDescriptor[reportSize++] = USAGE(1); //0x09;
-            tempHidReportDescriptor[reportSize++] = 0xC8;
-        }
-
-        // INPUT (Data,Var,Abs)
-        tempHidReportDescriptor[reportSize++] = HIDINPUT(1); 0x81;
-        tempHidReportDescriptor[reportSize++] = 0x02;
-
-        // END_COLLECTION (Physical)
-        tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); //0xc0;
-
-    } // Simulation Controls
-
-    if (this->getHatSwitchCount() > 0)
-    {
-
-        // COLLECTION (Physical)
-        tempHidReportDescriptor[reportSize++] = COLLECTION(1); //0xA1;
-        tempHidReportDescriptor[reportSize++] = 0x00;
-
-        // USAGE_PAGE (Generic Desktop)
-        tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1);
-        tempHidReportDescriptor[reportSize++] = 0x01;
-
-        // USAGE (Hat Switch)
-        for (int currentHatIndex = 0; currentHatIndex < this->getHatSwitchCount(); currentHatIndex++)
-        {
-            tempHidReportDescriptor[reportSize++] = USAGE(1);
-            tempHidReportDescriptor[reportSize++] = 0x39;
-        }
-
-        // Logical Min (1)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(1); //0x15;
-        tempHidReportDescriptor[reportSize++] = 0x01;
-
-        // Logical Max (8)
-        tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(1); //0x25;
-        tempHidReportDescriptor[reportSize++] = 0x08;
-
-        // Physical Min (0)
-        tempHidReportDescriptor[reportSize++] = PHYSICAL_MINIMUM(1); //0x35;
-        tempHidReportDescriptor[reportSize++] = 0x00;
-
-        // Physical Max (315)
-        tempHidReportDescriptor[reportSize++] = PHYSICAL_MAXIMUM(2); //0x46;
-        tempHidReportDescriptor[reportSize++] = 0x3B;
-        tempHidReportDescriptor[reportSize++] = 0x01;
-
-        // Unit (SI Rot : Ang Pos)
-        tempHidReportDescriptor[reportSize++] = UNIT(1); //0x65;
-        tempHidReportDescriptor[reportSize++] = 0x12;
-
-        // Report Size (8)
-        tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1); //0x75;
-        tempHidReportDescriptor[reportSize++] = 0x08;
-
-        // Report Count (4)
-        tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); //0x95;
-        tempHidReportDescriptor[reportSize++] = this->getHatSwitchCount();
-
-        // Input (Data, Variable, Absolute)
-        tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
-        tempHidReportDescriptor[reportSize++] = 0x42;
-
-        // END_COLLECTION (Physical)
-        tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); //0xc0;
     }
-
+    
     // End gamepad collection
     tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); //0xc0;
-
+    
     if(reportSize < bufferSize){
         memcpy(buffer, tempHidReportDescriptor, reportSize);
     } else {
@@ -565,6 +581,8 @@ bool GamepadConfiguration::getIncludeAccelerator() { return _whichSimulationCont
 bool GamepadConfiguration::getIncludeBrake() { return _whichSimulationControls[BRAKE]; }
 bool GamepadConfiguration::getIncludeSteering() { return _whichSimulationControls[STEERING]; }
 const bool *GamepadConfiguration::getWhichSimulationControls() const { return _whichSimulationControls; }
+bool GamepadConfiguration::getIncludeRumble() { return _includeRumble; }
+void GamepadConfiguration::setIncludeRumble(bool value) { _includeRumble = value; }
 
 void GamepadConfiguration::setWhichSpecialButtons(bool start, bool select, bool menu, bool home, bool back, bool volumeInc, bool volumeDec, bool volumeMute)
 {
@@ -628,6 +646,7 @@ void GamepadConfiguration::setAxesMin(int16_t value) { _axesMin = value; }
 void GamepadConfiguration::setAxesMax(int16_t value) { _axesMax = value; }
 void GamepadConfiguration::setSimulationMin(int16_t value) { _simulationMin = value; }
 void GamepadConfiguration::setSimulationMax(int16_t value) { _simulationMax = value; }
+
 
 uint8_t GamepadConfiguration::getButtonNumBytes()
 {

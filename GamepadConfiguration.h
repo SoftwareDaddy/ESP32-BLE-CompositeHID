@@ -7,7 +7,27 @@
 #define POSSIBLEAXES 8
 #define POSSIBLESIMULATIONCONTROLS 5
 
-#define GAMEPAD_REPORT_ID 0x01
+#define GAMEPAD_REPORT_ID 0x01 //input
+#define SET_EFFECT_REPORT_ID 0x02 //output
+#define SET_ENVELOPE_REPORT_ID 0x03//output
+#define SET_CONDITION_REPORT_ID 0x04 //output
+#define SET_PERIODIC_REPORT_ID 0x05 //output
+#define SET_CONSTANT_FORCE_REPORT_ID 0x06 //output
+#define SET_RAMP_FORCE_REPORT_ID 0x07 //output
+#define CUSTOM_FORCE_DATA_REPORT_ID 0x08 //output
+#define DOWNLOAD_FORCE_REPORT_ID 0x09 //output
+#define EFFECT_OPERATION_REPORT_ID 0x0A //output
+#define PID_BLOCK_FREE_REPORT_ID 0x0C //output
+#define PID_DEVICE_CONTROL_REPORT_ID 0x0D //output
+#define DEVICE_GAIN_REPORT_ID  0x0E //output
+#define SET_CUSTOM_FORCE_REPORT_ID 0x0F  //output
+
+#define PID_STATE_REPORT_ID 0x10 //input
+#define CREATE_NEW_EFFECT_REPORT_ID 0x11 //feature
+#define PID_BLOCK_LOAD_REPORT_ID 0x12 //feature
+#define PID_POOL_REPORT_ID 0x13 //feature
+#define FORCE_FEEDBACK_REPORT_ID 0x03 //feature
+
 #define GAMEPAD_DEVICE_NAME "Gamepad"
 
 #define CONTROLLER_TYPE_JOYSTICK 0x04
@@ -202,6 +222,43 @@
 #define VOLUME_DEC_BUTTON 6
 #define VOLUME_MUTE_BUTTON 7
 
+
+static const uint8_t pidReportDescriptor[] PROGMEM= 
+{
+    0x05, 0x0F,   //            (GLOBAL) USAGE_PAGE         0x000F Physical Interface Device Page 
+    0x09, 0x21,   //            (LOCAL)  USAGE              0x000F0021 Set Effect Report (Logical Collection)  
+    0xA1, 0x02,   //          (MAIN)   COLLECTION         0x02 Logical (Usage=0x0: Page=, Usage=, Type=) <-- Error: COLLECTION must be preceded by a USAGE <-- Warning: USAGE type should be CL (Logical Collection)
+    0x85, FORCE_FEEDBACK_REPORT_ID,  // REPORT_ID
+    0x09, 0x97,   //            (LOCAL)  USAGE              0x000F0097 DC Enable Actuators (Selector)  
+    0x15, 0x00,   //            (GLOBAL) LOGICAL_MINIMUM    0x00 (0) <-- Redundant: LOGICAL_MINIMUM is already 0 <-- Info: Consider replacing 15 00 with 14
+    0x25, 0x01,   //            (GLOBAL) LOGICAL_MAXIMUM    0x01 (1)  
+    0x75, 0x04,   //            (GLOBAL) REPORT_SIZE        0x04 (4) Number of bits per field <-- Redundant: REPORT_SIZE is already 4 
+    0x95, 0x01,   //            (GLOBAL) REPORT_COUNT       0x01 (1) Number of fields <-- Redundant: REPORT_COUNT is already 1 
+    0x91, 0x02,   //            (MAIN)   OUTPUT             0x00000002 (1 field x 4 bits) 0=Data 1=Variable 0=Absolute 0=NoWrap 0=Linear 0=PrefState 0=NoNull 0=NonVolatile 0=Bitmap 
+    0x15, 0x00,   //            (GLOBAL) LOGICAL_MINIMUM    0x00 (0) <-- Redundant: LOGICAL_MINIMUM is already 0 <-- Info: Consider replacing 15 00 with 14
+    0x25, 0x00,   //            (GLOBAL) LOGICAL_MAXIMUM    0x00 (0)  <-- Info: Consider replacing 25 00 with 24
+    0x91, 0x03,   //           (MAIN)   OUTPUT             0x00000003 (1 field x 4 bits) 1=Constant 1=Variable 0=Absolute 0=NoWrap 0=Linear 0=PrefState 0=NoNull 0=NonVolatile 0=Bitmap 
+    0x09, 0x70,   //           (LOCAL)  USAGE              0x000F0070 Magnitude (Dynamic Value)  
+    0x15, 0x00,   //            (GLOBAL) LOGICAL_MINIMUM    0x00 (0) <-- Redundant: LOGICAL_MINIMUM is already 0 <-- Info: Consider replacing 15 00 with 14
+    0x25, 0x64,   //            (GLOBAL) LOGICAL_MAXIMUM    0x64 (100)  
+    0x75, 0x08,   //            (GLOBAL) REPORT_SIZE        0x08 (8) Number of bits per field  
+    0x95, 0x04,   //            (GLOBAL) REPORT_COUNT       0x04 (4) Number of fields  
+    0x91, 0x02,   //            (MAIN)   OUTPUT             0x00000002 (4 fields x 8 bits) 0=Data 1=Variable 0=Absolute 0=NoWrap 0=Linear 0=PrefState 0=NoNull 0=NonVolatile 0=Bitmap 
+    0x09, 0x50,   //            (LOCAL)  USAGE              0x000F0050 Duration (Dynamic Value)  
+    0x66, 0x01, 0x10,   //          (GLOBAL) UNIT               0x1001 Time in seconds [1 s units] (1=System=SI Linear, 1=Time=Seconds)  
+    0x55, 0x0E,   //            (GLOBAL) UNIT_EXPONENT      0x0E (Unit Value x 10⁻²)  
+    0x26, 0xFF, 0x00,   //          (GLOBAL) LOGICAL_MAXIMUM    0x00FF (255)  
+    0x95, 0x01,   //            (GLOBAL) REPORT_COUNT       0x01 (1) Number of fields  
+    0x91, 0x02,   //            (MAIN)   OUTPUT             0x00000002 (1 field x 8 bits) 0=Data 1=Variable 0=Absolute 0=NoWrap 0=Linear 0=PrefState 0=NoNull 0=NonVolatile 0=Bitmap 
+    0x09, 0xA7,   //            (LOCAL)  USAGE              0x000F00A7 Start Delay (Dynamic Value)  
+    0x91, 0x02,   //            (MAIN)   OUTPUT             0x00000002 (1 field x 8 bits) 0=Data 1=Variable 0=Absolute 0=NoWrap 0=Linear 0=PrefState 0=NoNull 0=NonVolatile 0=Bitmap 
+    0x65, 0x00,   //            (GLOBAL) UNIT               0x00 No unit (0=None)  <-- Info: Consider replacing 65 00 with 64
+    0x55, 0x00,   //            (GLOBAL) UNIT_EXPONENT      0x00 (Unit Value x 10⁰)  <-- Info: Consider replacing 55 00 with 54
+    0x09, 0x7C,   //            (LOCAL)  USAGE              0x000F007C Loop Count (Dynamic Value)  
+    0x91, 0x02,   //            (MAIN)   OUTPUT             0x00000002 (1 field x 8 bits) 0=Data 1=Variable 0=Absolute 0=NoWrap 0=Linear 0=PrefState 0=NoNull 0=NonVolatile 0=Bitmap 
+    0xC0    //             (MAIN)   END_COLLECTION     Logical 
+};
+
 class GamepadConfiguration : public BaseCompositeDeviceConfiguration
 {
 public:
@@ -249,6 +306,7 @@ public:
     int16_t getAxesMax();
     int16_t getSimulationMin();
     int16_t getSimulationMax();
+    bool getIncludeRumble();
 
     void setControllerType(uint8_t controllerType);
     void setButtonCount(uint16_t value);
@@ -283,6 +341,8 @@ public:
     void setSimulationMin(int16_t value);
     void setSimulationMax(int16_t value);
 
+    void setIncludeRumble(bool value);
+
 private:
     uint8_t getButtonNumPaddingBits();
     uint8_t getSpecialButtonNumPaddingBits();
@@ -301,6 +361,7 @@ private:
     int16_t _axesMax;
     int16_t _simulationMin;
     int16_t _simulationMax;
+    bool _includeRumble;
 };
 
 #endif

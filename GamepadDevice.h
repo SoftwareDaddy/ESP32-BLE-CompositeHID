@@ -5,6 +5,25 @@
 #include <GamepadConfiguration.h>
 #include <BaseCompositeDevice.h>
 
+// Forwards
+class GamepadDevice;
+
+
+class GamepadCallbacks : public NimBLECharacteristicCallbacks
+{
+public:
+    GamepadCallbacks(GamepadDevice* device);
+
+    void onWrite(NimBLECharacteristic* pCharacteristic) override;
+    void onRead(NimBLECharacteristic* pCharacteristic) override;
+    void onNotify(NimBLECharacteristic* pCharacteristic) override;
+    void onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code) override;
+
+private:
+    GamepadDevice* _device;
+};
+
+
 class GamepadDevice : public BaseCompositeDevice
 {
     GamepadConfiguration _config;
@@ -31,8 +50,11 @@ private:
     int16_t _hat3;
     int16_t _hat4;
 
+    GamepadCallbacks* _callbacks;
+
 public:
     GamepadDevice(const GamepadConfiguration& config);
+    ~GamepadDevice();
 
     void init(NimBLEHIDDevice* hid) override;
     BaseCompositeDeviceConfiguration* getDeviceConfig() override;
@@ -94,6 +116,23 @@ public:
 
 private:
     uint8_t specialButtonBitPosition(uint8_t specialButton);
+
+    NimBLECharacteristic* _setEffectCharacteristic;
+    NimBLECharacteristic* _setEnvelopeCharacteristic;
+    NimBLECharacteristic* _setConditionCharacteristic;
+    NimBLECharacteristic* _setPeriodicCharacteristic;
+    NimBLECharacteristic* _setConstantCharacteristic;
+    NimBLECharacteristic* _setRampCharacteristic;
+    NimBLECharacteristic* _setCustomForceCharacteristic;
+    NimBLECharacteristic* _downloadForceCharacteristic;
+    NimBLECharacteristic* _effectOperationCharacteristic;
+    NimBLECharacteristic* _pidDeviceControlCharacteristic;
+    NimBLECharacteristic* _deviceGainCharacteristic;
+    NimBLECharacteristic* _customForceCharacteristic;
+    NimBLECharacteristic* _pidState;
+    NimBLECharacteristic* _createNewEffect;
+    NimBLECharacteristic* _pidBlockLoad;
+    NimBLECharacteristic* _pidPool;
 };
 
 #endif

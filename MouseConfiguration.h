@@ -4,7 +4,7 @@
 #include <BaseCompositeDevice.h>
 #include <MouseConfiguration.h>
 
-#define MOUSE_REPORT_ID 0x02
+#define MOUSE_REPORT_ID 0x20
 #define MOUSE_DEVICE_NAME "Mouse"
 
 #define MOUSE_LOGICAL_LEFT_BUTTON 0x01
