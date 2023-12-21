@@ -3,12 +3,42 @@
 
 #include <NimBLECharacteristic.h>
 #include <Callback.h>
+
+#include "BLEHostConfiguration.h"
 #include "BaseCompositeDevice.h"
 #include "GamepadDevice.h"
 
 #define XBOX_INPUT_REPORT_ID 0x01
 #define XBOX_EXTRA_INPUT_REPORT_ID 0x02
 #define XBOX_OUTPUT_REPORT_ID 0x03
+
+// Button bitmasks
+#define XBOX_BUTTON_A 0x01
+#define XBOX_BUTTON_B 0x02
+// UNUSED - 0x04
+#define XBOX_BUTTON_X 0x08 
+#define XBOX_BUTTON_Y 0x10
+// UNUSED - 0x20
+#define XBOX_BUTTON_LB 0x40
+#define XBOX_BUTTON_RB 0x80
+// UNUSED - 0x100
+// UNUSED - 0x200
+// UNUSED - 0x400
+#define XBOX_BUTTON_START 0x800
+#define XBOX_BUTTON_HOME 0x1000
+#define XBOX_BUTTON_LS 0x2000
+#define XBOX_BUTTON_RS 0x4000
+
+// Select bitmask
+// The select button lives in its own byte at the end of the input report
+#define XBOX_BUTTON_SELECT 0x01
+
+// Dpad bitmasks
+#define XBOX_BUTTON_UP 0x01
+#define XBOX_BUTTON_DOWN 0x02
+#define XBOX_BUTTON_LEFT 0x04
+#define XBOX_BUTTON_RIGHT 0x08
+
 
 // Forwards
 class XboxGamepadDevice;
@@ -29,29 +59,32 @@ private:
 };
 
 struct XboxGamepadOutputReportData {
-    uint8_t dcEnableActuators;  // 4bit for DC Enable Actuators + 4bit padding (1 byte)
-    uint32_t magnitude;
-    uint8_t duration;
-    uint8_t startDelay;
-    uint8_t loopCount;
+public:
+    uint8_t dcEnableActuators = 0x00;   // 4bits for DC Enable Actuators, 4bits padding
+    uint8_t leftTriggerMagnitude = 0;
+    uint8_t rightTriggerMagnitude = 0; 
+    uint8_t weakMotorMagnitude = 0;
+    uint8_t strongMotorMagnitude = 0; 
+    uint8_t duration = 0;               // UNUSED
+    uint8_t startDelay = 0;             // UNUSED
+    uint8_t loopCount = 0;              // UNUSED
 };
 
-
 struct XboxGamepadInputReportData {
-    uint16_t x;
-    uint16_t y;
-    uint16_t z;
-    uint16_t rz;
-    uint16_t brake;         // 10 bits for brake + 6 bit padding (2 bytes)
-    uint16_t accelerator;   // 10 bits for accelerator + 6bit padding
-    uint8_t hat;            // 4bits for hat switch + 4 bit padding (1 byte) 
-    uint16_t buttons;       // 15 * 1bit for buttons + 1 bit padding (2 bytes)
-    uint8_t record;         // 1 bits for record button + 7 bit padding (1 byte)
+    uint16_t x = 0;
+    uint16_t y = 0;
+    uint16_t z = 0;
+    uint16_t rz = 0;
+    uint16_t brake = 0;         // 10 bits for brake + 6 bit padding (2 bytes)
+    uint16_t accelerator = 0;   // 10 bits for accelerator + 6bit padding
+    uint8_t hat = 0x00;         // 4bits for hat switch + 4 bit padding (1 byte) 
+    uint16_t buttons = 0x00;    // 15 * 1bit for buttons + 1 bit padding (2 bytes)
+    uint8_t select = 0x00;      // 1 bits for select button + 7 bit padding (1 byte)
 };
 
 class XboxGamepadDeviceConfiguration : public BaseCompositeDeviceConfiguration {
 public:
-    XboxGamepadDeviceConfiguration(uint8_t reportId);
+    XboxGamepadDeviceConfiguration(uint8_t reportId = XBOX_INPUT_REPORT_ID);
     uint8_t getDeviceReportSize() override;
     size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
 };
@@ -59,13 +92,32 @@ public:
 
 class XboxGamepadDevice : public BaseCompositeDevice {
 public:
-    XboxGamepadDevice(const XboxGamepadDeviceConfiguration& config);
+    XboxGamepadDevice(const XboxGamepadDeviceConfiguration& config = XboxGamepadDeviceConfiguration());
     ~XboxGamepadDevice();
+
+    static BLEHostConfiguration getFakedHostConfiguration();
 
     void init(NimBLEHIDDevice* hid) override;
     BaseCompositeDeviceConfiguration* getDeviceConfig() override;
 
     Signal<XboxGamepadOutputReportData> onVibrate;
+
+    // Input Controls
+    void resetInputs();
+    void press(uint16_t button = XBOX_BUTTON_A);    
+    void release(uint16_t button = XBOX_BUTTON_A); 
+    bool isPressed(uint16_t button = XBOX_BUTTON_A);
+    void setLeftThumb(uint16_t x = 0, uint16_t y = 0);
+    void setRightThumb(uint16_t z = 0, uint16_t rZ = 0);
+    void setLeftTrigger(uint16_t rX = 0);
+    void setRightTrigger(uint16_t rY = 0);
+    void setTriggers(uint16_t rX = 0, uint16_t rY = 0);
+    void setHat(uint8_t hat = 0);
+    void pressSelect();
+    void releaseSelect();
+    
+    void sendGamepadReport();
+
 
 private:
     XboxGamepadDeviceConfiguration _config;

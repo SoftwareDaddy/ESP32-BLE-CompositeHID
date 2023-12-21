@@ -108,7 +108,6 @@ public:
     void setSteering(int16_t steering = 0);
     void setSimulationControls(int16_t rudder = 0, int16_t throttle = 0, int16_t accelerator = 0, int16_t brake = 0, int16_t steering = 0);
     void sendGamepadReport();
-    void sendMouseReport();
     bool isPressed(uint8_t b = BUTTON_1); // check BUTTON_1 by default
     bool isConnected(void);
     void resetButtons();

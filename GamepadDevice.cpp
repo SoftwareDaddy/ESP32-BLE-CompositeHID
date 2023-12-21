@@ -15,22 +15,22 @@ GamepadCallbacks::GamepadCallbacks(GamepadDevice* device) : _device(device)
 
 void GamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
 {
-    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onWrite, value: %s", pCharacteristic->getValue().c_str());
+    ESP_LOGD(LOG_TAG, "GamepadCallbacks::onWrite, value: %s", pCharacteristic->getValue().c_str());
 }
 
 void GamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic)
 {
-    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onRead");
+    ESP_LOGD(LOG_TAG, "GamepadCallbacks::onRead");
 }
 
 void GamepadCallbacks::onNotify(NimBLECharacteristic* pCharacteristic)
 {
-    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onNotify");
+    ESP_LOGD(LOG_TAG, "GamepadCallbacks::onNotify");
 }
 
 void GamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code)
 {
-    ESP_LOGI(LOG_TAG, "GamepadCallbacks::onStatus, status: %d, code: %d", status, code);
+    ESP_LOGD(LOG_TAG, "GamepadCallbacks::onStatus, status: %d, code: %d", status, code);
 }
 
 
