@@ -225,7 +225,7 @@ void BleCompositeHID::taskServer(void *pvParameter)
     BleCompositeHIDInstance->onStarted(pServer);
 
     NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
-    pAdvertising->setAppearance(GENERIC_HID);
+    pAdvertising->setAppearance(HID_GAMEPAD);
     pAdvertising->addServiceUUID(BleCompositeHIDInstance->_hid->hidService()->getUUID());
     pAdvertising->start();
     BleCompositeHIDInstance->_hid->setBatteryLevel(BleCompositeHIDInstance->batteryLevel);

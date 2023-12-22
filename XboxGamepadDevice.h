@@ -7,10 +7,7 @@
 #include "BLEHostConfiguration.h"
 #include "BaseCompositeDevice.h"
 #include "GamepadDevice.h"
-
-#define XBOX_INPUT_REPORT_ID 0x01
-#define XBOX_EXTRA_INPUT_REPORT_ID 0x02
-#define XBOX_OUTPUT_REPORT_ID 0x03
+#include "XboxDescriptors.h"
 
 // Button bitmasks
 #define XBOX_BUTTON_A 0x01
