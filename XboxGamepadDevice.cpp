@@ -1,8 +1,6 @@
 #include "XboxGamepadDevice.h"
 #include "BleCompositeHID.h"
 
-#include <netinet/in.h>
-
 
 #if defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -358,28 +356,94 @@ bool XboxGamepadDevice::isPressed(uint16_t button) {
     return (bool)(_inputReport.buttons & button);
 }
 
-void XboxGamepadDevice::setLeftThumb(uint16_t x, uint16_t y) {
+void XboxGamepadDevice::setLeftThumb(int16_t x, int16_t y) {
+    x = constrain(x, XBOX_STICK_MIN, XBOX_STICK_MAX);
+    y = constrain(y, XBOX_STICK_MIN, XBOX_STICK_MAX);
 
+    if(_inputReport.x != x || _inputReport.y != y){
+        _inputReport.x = (uint16_t)(x + 0x8000);
+        _inputReport.y = (uint16_t)(y + 0x8000);
+        if (_config.getAutoReport())
+        {
+            sendGamepadReport();
+        }
+    }
 }
 
-void XboxGamepadDevice::setRightThumb(uint16_t z, uint16_t rZ) {
+void XboxGamepadDevice::setRightThumb(int16_t z, int16_t rZ) {
+    z = constrain(z, XBOX_STICK_MIN, XBOX_STICK_MAX);
+    rZ = constrain(rZ, XBOX_STICK_MIN, XBOX_STICK_MAX);
 
+    if(_inputReport.z != z || _inputReport.rz != rZ){
+        _inputReport.z = (uint16_t)(z + 0x8000);
+        _inputReport.rz = (uint16_t)(rZ+ 0x8000);
+        if (_config.getAutoReport())
+        {
+            sendGamepadReport();
+        }
+    }
 }
 
 void XboxGamepadDevice::setLeftTrigger(uint16_t value) {
+    value = constrain(value, XBOX_TRIGGER_MIN, XBOX_TRIGGER_MAX);
 
+    if (_inputReport.brake != value) {
+        _inputReport.brake = value;
+        if (_config.getAutoReport()) {
+            sendGamepadReport();
+        }
+    }
 }
 
 void XboxGamepadDevice::setRightTrigger(uint16_t value) {
+    value = constrain(value, XBOX_TRIGGER_MIN, XBOX_TRIGGER_MAX);
 
+    if (_inputReport.accelerator != value) {
+        _inputReport.accelerator = value;
+        if (_config.getAutoReport()) {
+            sendGamepadReport();
+        }
+    }
 }
 
 void XboxGamepadDevice::setTriggers(uint16_t left, uint16_t right) {
+    left = constrain(left, XBOX_TRIGGER_MIN, XBOX_TRIGGER_MAX);
+    right = constrain(right, XBOX_TRIGGER_MIN, XBOX_TRIGGER_MAX);
 
+    if (_inputReport.brake != left || _inputReport.accelerator != right) {
+        _inputReport.brake = left;
+        _inputReport.accelerator = right;
+        if (_config.getAutoReport()) {
+            sendGamepadReport();
+        }
+    }
 }
 
-void XboxGamepadDevice::setHat(uint8_t hat) {
+void XboxGamepadDevice::pressDPadDirection(uint8_t direction) {
+    // Avoid double presses
+    if (!isDPadPressed(direction))
+    {
+        _inputReport.hat |= direction;
+        if (_config.getAutoReport())
+        {
+            sendGamepadReport();
+        }
+    }
+}
 
+void XboxGamepadDevice::releaseDPadDirection(uint8_t direction) {
+    if (isDPadPressed(direction))
+    {
+        _inputReport.hat ^= direction;
+        if (_config.getAutoReport())
+        {
+            sendGamepadReport();
+        }
+    }
+}
+
+bool XboxGamepadDevice::isDPadPressed(uint8_t direction) {
+    return (bool)(_inputReport.hat & direction);
 }
 
 void XboxGamepadDevice::pressSelect() {

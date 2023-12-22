@@ -34,10 +34,22 @@
 #define XBOX_BUTTON_SELECT 0x01
 
 // Dpad bitmasks
-#define XBOX_BUTTON_UP 0x01
-#define XBOX_BUTTON_DOWN 0x02
-#define XBOX_BUTTON_LEFT 0x04
-#define XBOX_BUTTON_RIGHT 0x08
+#define XBOX_BUTTON_DPAD_NORTH 0x01
+#define XBOX_BUTTON_DPAD_NORTHEAST 0x02
+#define XBOX_BUTTON_DPAD_EAST 0x03
+#define XBOX_BUTTON_DPAD_SOUTHEAST 0x04
+#define XBOX_BUTTON_DPAD_SOUTH 0x05
+#define XBOX_BUTTON_DPAD_SOUTHWEST 0x06
+#define XBOX_BUTTON_DPAD_WEST 0x07
+#define XBOX_BUTTON_DPAD_NORTHWEST 0x08
+
+// Trigger range
+#define XBOX_TRIGGER_MIN 0
+#define XBOX_TRIGGER_MAX 1023
+
+// Thumbstick range
+#define XBOX_STICK_MIN -32768
+#define XBOX_STICK_MAX 32767
 
 
 // Forwards
@@ -107,12 +119,14 @@ public:
     void press(uint16_t button = XBOX_BUTTON_A);    
     void release(uint16_t button = XBOX_BUTTON_A); 
     bool isPressed(uint16_t button = XBOX_BUTTON_A);
-    void setLeftThumb(uint16_t x = 0, uint16_t y = 0);
-    void setRightThumb(uint16_t z = 0, uint16_t rZ = 0);
+    void setLeftThumb(int16_t x = 0, int16_t y = 0);
+    void setRightThumb(int16_t z = 0, int16_t rZ = 0);
     void setLeftTrigger(uint16_t rX = 0);
     void setRightTrigger(uint16_t rY = 0);
     void setTriggers(uint16_t rX = 0, uint16_t rY = 0);
-    void setHat(uint8_t hat = 0);
+    void pressDPadDirection(uint8_t direction = 0);
+    void releaseDPadDirection(uint8_t direction = 0);
+    bool isDPadPressed(uint8_t direction = 0);
     void pressSelect();
     void releaseSelect();
     
