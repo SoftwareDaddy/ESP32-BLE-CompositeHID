@@ -21,14 +21,15 @@
 // UNUSED - 0x100
 // UNUSED - 0x200
 // UNUSED - 0x400
+#define XBOX_BUTTON_SELECT 0x400
 #define XBOX_BUTTON_START 0x800
 #define XBOX_BUTTON_HOME 0x1000
 #define XBOX_BUTTON_LS 0x2000
 #define XBOX_BUTTON_RS 0x4000
 
 // Select bitmask
-// The select button lives in its own byte at the end of the input report
-#define XBOX_BUTTON_SELECT 0x01
+// The share button lives in its own byte at the end of the input report
+#define XBOX_BUTTON_SHARE 0x01
 
 // Dpad bitmasks
 #define XBOX_BUTTON_DPAD_NORTH 0x01
@@ -88,7 +89,7 @@ struct XboxGamepadInputReportData {
     uint16_t accelerator = 0;   // 10 bits for accelerator + 6bit padding
     uint8_t hat = 0x00;         // 4bits for hat switch + 4 bit padding (1 byte) 
     uint16_t buttons = 0x00;    // 15 * 1bit for buttons + 1 bit padding (2 bytes)
-    uint8_t select = 0x00;      // 1 bits for select button + 7 bit padding (1 byte)
+    uint8_t share = 0x00;      // 1 bits for share button + 7 bit padding (1 byte)
 };
 
 class XboxGamepadDeviceConfiguration : public BaseCompositeDeviceConfiguration {
@@ -124,8 +125,8 @@ public:
     void pressDPadDirection(uint8_t direction = 0);
     void releaseDPadDirection(uint8_t direction = 0);
     bool isDPadPressed(uint8_t direction = 0);
-    void pressSelect();
-    void releaseSelect();
+    void pressShare();
+    void releaseShare();
     
     void sendGamepadReport();
 

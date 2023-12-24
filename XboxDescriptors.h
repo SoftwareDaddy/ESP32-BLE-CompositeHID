@@ -5,30 +5,24 @@
 #include <stdint.h>
 
 #define XBOX_VENDOR_ID 0x045E
+
+// Product: Xbox One Wireless Controller - Model 1708 pre 2021 firmware
+// Specifically picked since it provides rumble support on linux kernels earlier than 6.5
+// No share button, it maps to the select button instead
 #define XBOX_1708_PRODUCT_ID 0x02fd //Bluetooth. Wired is 0x02EA? See https://discourse.libsdl.org/t/sdl-be-more-explicit-about-xbox-360-one-device-ids/31666
 #define XBOX_1708_BCD_DEVICE_ID 0x0408
 #define XBOX_1708_SERIAL "3033363030343037323136373239"
 
-#define XBOX_1914_PRODUCT_ID 0x0B12
-#define XBOX_1914_BCD_DEVICE_ID 0x0503
+// Product: latest Xbox series X wireless controller
+// Share button valid
+#define XBOX_1914_PRODUCT_ID 0x0B13
+#define XBOX_1914_BCD_DEVICE_ID 0x0509
 #define XBOX_1914_SERIAL "3039373130303637313034303231"
 
 #define XBOX_INPUT_REPORT_ID 0x01
 #define XBOX_EXTRA_INPUT_REPORT_ID 0x02
 #define XBOX_OUTPUT_REPORT_ID 0x03
 #define XBOX_EXTRA_OUTPUT_REPORT_ID 0x04
-
-// config.setVid(0x045E); 
-
-// // Product: Xbox One Wireless Controller - Model 1708 pre 2021 firmware
-// // Specifically picked since it provides rumble support on linux kernels earlier than 6.5
-// config.setPid(0x02fd); 
-
-// // Serial: Probably don't need this
-// config.setSerialNumber("3033363030343037323136373239");
-
-// config.setSoftwareRevision("1708");
-
 
 static const uint8_t XboxOneS_1914_HIDDescriptor[] 
 {

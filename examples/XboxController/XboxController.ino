@@ -31,7 +31,7 @@ void setup()
     gamepad->onVibrate.attach(vibrationSlot);
 
     // Set up composite HID device to hold our controller device
-    compositeHID = new BleCompositeHID("Controller", "Microsoft", 100);
+    compositeHID = new BleCompositeHID("Xbox Wireless Controller", "Microsoft", 100);
 
     // Add all child devices to the top-level composite HID device to manage them
     compositeHID->addDevice(gamepad);
@@ -64,6 +64,7 @@ void testButtons(){
         XBOX_BUTTON_LB, 
         XBOX_BUTTON_RB, 
         XBOX_BUTTON_START,
+        XBOX_BUTTON_SELECT,
         //XBOX_BUTTON_HOME,
         XBOX_BUTTON_LS, 
         XBOX_BUTTON_RS
@@ -79,12 +80,12 @@ void testButtons(){
         delay(100);
     }
 
-    // The select button is a seperate call since it doesn't live in the same 
+    // The share button is a seperate call since it doesn't live in the same 
     // bitflag as the rest of the buttons
-    gamepad->pressSelect();
+    gamepad->pressShare();
     gamepad->sendGamepadReport();
     delay(500);
-    gamepad->releaseSelect();
+    gamepad->releaseShare();
     gamepad->sendGamepadReport();
     delay(100);
 }
@@ -115,7 +116,8 @@ void testPads(){
 
 void testTriggers(){
     for(int16_t val = XBOX_TRIGGER_MIN; val <= XBOX_TRIGGER_MAX; val++){
-        Serial.println("Setting trigger value to " + String(val));
+        if(val % 8 == 0)
+            Serial.println("Setting trigger value to " + String(val));
         gamepad->setLeftTrigger(val);
         gamepad->setRightTrigger(val);
         gamepad->sendGamepadReport();
@@ -125,14 +127,19 @@ void testTriggers(){
 
 void testThumbsticks(){
     int startTime = millis();
+    int reportCount = 0;
     while(millis() - startTime < 8000){
+        reportCount++;
         int16_t x = cos((float)millis() / 1000.0f) * XBOX_STICK_MAX;
         int16_t y = sin((float)millis() / 1000.0f) * XBOX_STICK_MAX;
 
         gamepad->setLeftThumb(x, y);
         gamepad->setRightThumb(x, y);
         gamepad->sendGamepadReport();
-        Serial.println("Setting left thumb to " + String(x) + ", " + String(y));
+        
+        if(reportCount % 8 == 0)
+            Serial.println("Setting left thumb to " + String(x) + ", " + String(y));
+            
         delay(10);
     }
 }

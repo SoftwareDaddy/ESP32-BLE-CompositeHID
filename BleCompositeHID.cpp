@@ -23,24 +23,23 @@ static const char *LOG_TAG = "BLECompositeHID";
 
 #define SERVICE_UUID_DEVICE_INFORMATION        "180A"      // Service - Device information
 
+#define CHARACTERISTIC_UUID_SYSTEM_ID          "2A23"      // Characteristic - System ID 0x2A23
 #define CHARACTERISTIC_UUID_MODEL_NUMBER       "2A24"      // Characteristic - Model Number String - 0x2A24
 #define CHARACTERISTIC_UUID_SOFTWARE_REVISION  "2A28"      // Characteristic - Software Revision String - 0x2A28
 #define CHARACTERISTIC_UUID_SERIAL_NUMBER      "2A25"      // Characteristic - Serial Number String - 0x2A25
 #define CHARACTERISTIC_UUID_FIRMWARE_REVISION  "2A26"      // Characteristic - Firmware Revision String - 0x2A26
-#define CHARACTERISTIC_UUID_HARDWARE_REVISION  "2A27"      // Characteristic - Hardware Revision String - 0x2A27\
+#define CHARACTERISTIC_UUID_HARDWARE_REVISION  "2A27"      // Characteristic - Hardware Revision String - 0x2A27
 
+uint16_t vidSource;
 uint16_t vid;
 uint16_t pid;
 uint16_t guidVersion;
-uint16_t axesMin;
-uint16_t axesMax;
-uint16_t simulationMin;
-uint16_t simulationMax;
 std::string modelNumber;
 std::string softwareRevision;
 std::string serialNumber;
 std::string firmwareRevision;
 std::string hardwareRevision;
+std::string systemID;
 
 std::string uint8_to_hex_string(const uint8_t *v, const size_t s) {
   std::stringstream ss;
@@ -76,7 +75,9 @@ void BleCompositeHID::begin(const BLEHostConfiguration& config)
     serialNumber = _configuration.getSerialNumber();
     firmwareRevision = _configuration.getFirmwareRevision();
     hardwareRevision = _configuration.getHardwareRevision();
+    systemID = _configuration.getSystemID();
 
+    vidSource = _configuration.getVidSource();
 	vid = _configuration.getVid();
 	pid = _configuration.getPid();
 	guidVersion = _configuration.getGuidVersion();
@@ -204,10 +205,16 @@ void BleCompositeHID::taskServer(void *pvParameter)
     );
     pCharacteristic_Hardware_Revision->setValue(hardwareRevision);
 
-    BleCompositeHIDInstance->_hid->pnp(0x01, vid, pid, guidVersion);
+    // BLECharacteristic* pCharacteristic_System_ID = pService->createCharacteristic(
+    //   CHARACTERISTIC_UUID_SYSTEM_ID,
+    //   NIMBLE_PROPERTY::READ
+    // );
+    // pCharacteristic_Hardware_Revision->setValue();
+
+    BleCompositeHIDInstance->_hid->pnp(vidSource, vid, pid, guidVersion);
     BleCompositeHIDInstance->_hid->hidInfo(0x00, 0x01);
 
-    NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
+    NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_SC); //BLE_SM_PAIR_AUTHREQ_BOND
 
     // uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
     // memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);

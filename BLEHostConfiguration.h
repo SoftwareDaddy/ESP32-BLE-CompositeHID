@@ -8,6 +8,7 @@ class BLEHostConfiguration
 {
 private:
     
+    uint8_t _vidSource;
     uint16_t _vid;
     uint16_t _pid;
 	uint16_t _guidVersion;
@@ -16,10 +17,11 @@ private:
     char *_serialNumber;
     char *_firmwareRevision;
     char *_hardwareRevision;
+    char *_systemID;
 
 public:
     BLEHostConfiguration();
-   
+    uint16_t getVidSource();
     uint16_t getVid();
     uint16_t getPid();
 	uint16_t getGuidVersion();
@@ -28,7 +30,9 @@ public:
     char *getSerialNumber();
     char *getFirmwareRevision();
     char *getHardwareRevision();
+    char *getSystemID();
 
+    void setVidSource(uint8_t value);
     void setVid(uint16_t value);
     void setPid(uint16_t value);
 	void setGuidVersion(uint16_t value);

@@ -84,7 +84,7 @@ uint8_t XboxGamepadDeviceConfiguration::getDeviceReportSize() {
     // 4 * 8bit for Magnitude (4 bytes)                         = 4 bytes
     // 3 * 8bit for Duration, Start Delay, Loop Count (3 bytes) = 3 bytes
 
-    return sizeof(XboxGamepadInputReportData);
+    return 16;//sizeof(XboxGamepadInputReportData);
 }
 
 size_t XboxGamepadDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) {
@@ -123,12 +123,13 @@ BLEHostConfiguration XboxGamepadDevice::getFakedHostConfiguration() {
     BLEHostConfiguration config;
 
     // Vendor: Microsoft
-    config.setVid(0x1949); 
+    config.setVidSource(0x02);
+    config.setVid(XBOX_VENDOR_ID); 
     
     // Product: Xbox One Wireless Controller - Model 1708 pre 2021 firmware
     // Specifically picked since it provides rumble support on linux kernels earlier than 6.5
-    config.setPid(0x041A); 
-    config.setGuidVersion(0x0101);
+    config.setPid(XBOX_1914_PRODUCT_ID); 
+    config.setGuidVersion(XBOX_1914_BCD_DEVICE_ID);
 
     // Serial: Probably don't need this
     config.setSerialNumber(XBOX_1914_SERIAL);
@@ -139,7 +140,7 @@ BLEHostConfiguration XboxGamepadDevice::getFakedHostConfiguration() {
 void XboxGamepadDevice::init(NimBLEHIDDevice* hid) {
     /// Create input characteristic to send events to the computer
     auto input = hid->inputReport(XBOX_INPUT_REPORT_ID);
-    _extra_input = hid->inputReport(XBOX_EXTRA_INPUT_REPORT_ID);
+    //_extra_input = hid->inputReport(XBOX_EXTRA_INPUT_REPORT_ID);
 
     // Create output characteristic to handle events coming from the computer
     auto output = hid->outputReport(XBOX_OUTPUT_REPORT_ID);
@@ -276,11 +277,11 @@ bool XboxGamepadDevice::isDPadPressed(uint8_t direction) {
     return (bool)(_inputReport.hat & direction);
 }
 
-void XboxGamepadDevice::pressSelect() {
+void XboxGamepadDevice::pressShare() {
     // Avoid double presses
-    if (!(_inputReport.select & XBOX_BUTTON_SELECT))
+    if (!(_inputReport.share & XBOX_BUTTON_SHARE))
     {
-        _inputReport.select |= XBOX_BUTTON_SELECT;
+        _inputReport.share |= XBOX_BUTTON_SHARE;
         if (_config.getAutoReport())
         {
             sendGamepadReport();
@@ -288,10 +289,10 @@ void XboxGamepadDevice::pressSelect() {
     }
 }
 
-void XboxGamepadDevice::releaseSelect() {
-    if (_inputReport.select & XBOX_BUTTON_SELECT)
+void XboxGamepadDevice::releaseShare() {
+    if (_inputReport.share & XBOX_BUTTON_SHARE)
     {
-        _inputReport.select ^= XBOX_BUTTON_SELECT;
+        _inputReport.share ^= XBOX_BUTTON_SHARE;
         if (_config.getAutoReport())
         {
             sendGamepadReport();
@@ -309,18 +310,19 @@ void XboxGamepadDevice::sendGamepadReport(){
     if(!parentDevice->isConnected())
         return;
 
-    uint8_t packedData[_config.getDeviceReportSize()] = {
-        _inputReport.x & 0xff, _inputReport.x >> 8,
-        _inputReport.y & 0xff, _inputReport.y >> 8,
-        _inputReport.z & 0xff, _inputReport.z >> 8,
-        _inputReport.rz & 0xff, _inputReport.rz >> 8,
-        _inputReport.brake & 0xff, _inputReport.brake >> 8,
-        _inputReport.accelerator & 0xff, _inputReport.accelerator >> 8,
-        _inputReport.hat,
-        _inputReport.buttons & 0xff, _inputReport.buttons >> 8,
-        _inputReport.select
+    size_t packedSize = _config.getDeviceReportSize();
+    uint8_t packedData[packedSize] = {
+        (uint8_t)(_inputReport.x & 0xff), (uint8_t)(_inputReport.x >> 8),
+        (uint8_t)(_inputReport.y & 0xff), (uint8_t)(_inputReport.y >> 8),
+        (uint8_t)(_inputReport.z & 0xff), (uint8_t)(_inputReport.z >> 8),
+        (uint8_t)(_inputReport.rz & 0xff), (uint8_t)(_inputReport.rz >> 8),
+        (uint8_t)(_inputReport.brake & 0xff), (uint8_t)(_inputReport.brake >> 8),
+        (uint8_t)(_inputReport.accelerator & 0xff), (uint8_t)(_inputReport.accelerator >> 8),
+        (uint8_t)_inputReport.hat,
+        (uint8_t)(_inputReport.buttons & 0xff), (uint8_t)(_inputReport.buttons >> 8),
+        (uint8_t)_inputReport.share
     };
 
-    input->setValue(packedData, sizeof(packedData));
+    input->setValue(packedData, packedSize);
     input->notify();
 }
