@@ -105,7 +105,7 @@ public:
     XboxGamepadDevice(const XboxGamepadDeviceConfiguration& config = XboxGamepadDeviceConfiguration());
     ~XboxGamepadDevice();
 
-    static BLEHostConfiguration getFakedHostConfiguration();
+    static BLEHostConfiguration getFakedHostConfiguration(const XboxControllerIdentifier& identifier);
 
     void init(NimBLEHIDDevice* hid) override;
     BaseCompositeDeviceConfiguration* getDeviceConfig() override;

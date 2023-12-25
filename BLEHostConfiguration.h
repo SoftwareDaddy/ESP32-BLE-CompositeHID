@@ -2,6 +2,7 @@
 #define ESP32_BLE_HOST_CONFIG_H
 
 #include <Arduino.h>
+#include <string>
 #include <HIDKeyboardTypes.h>
 
 class BLEHostConfiguration
@@ -12,12 +13,12 @@ private:
     uint16_t _vid;
     uint16_t _pid;
 	uint16_t _guidVersion;
-    char *_modelNumber;
-    char *_softwareRevision;
-    char *_serialNumber;
-    char *_firmwareRevision;
-    char *_hardwareRevision;
-    char *_systemID;
+    std::string _modelNumber;
+    std::string _softwareRevision;
+    std::string _serialNumber;
+    std::string _firmwareRevision;
+    std::string _hardwareRevision;
+    std::string _systemID;
 
 public:
     BLEHostConfiguration();
@@ -25,22 +26,22 @@ public:
     uint16_t getVid();
     uint16_t getPid();
 	uint16_t getGuidVersion();
-    char *getModelNumber();
-    char *getSoftwareRevision();
-    char *getSerialNumber();
-    char *getFirmwareRevision();
-    char *getHardwareRevision();
-    char *getSystemID();
+    const char* getModelNumber();
+    const char* getSoftwareRevision();
+    const char* getSerialNumber();
+    const char* getFirmwareRevision();
+    const char* getHardwareRevision();
+    const char* getSystemID();
 
     void setVidSource(uint8_t value);
     void setVid(uint16_t value);
     void setPid(uint16_t value);
 	void setGuidVersion(uint16_t value);
-    void setModelNumber(char *value);
-    void setSoftwareRevision(char *value);
-    void setSerialNumber(char *value);
-    void setFirmwareRevision(char *value);
-    void setHardwareRevision(char *value);
+    void setModelNumber(const char *value);
+    void setSoftwareRevision(const char *value);
+    void setSerialNumber(const char *value);
+    void setFirmwareRevision(const char *value);
+    void setHardwareRevision(const char *value);
 };
 
 #endif

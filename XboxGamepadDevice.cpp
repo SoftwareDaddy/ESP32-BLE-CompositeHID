@@ -88,15 +88,13 @@ uint8_t XboxGamepadDeviceConfiguration::getDeviceReportSize() {
 }
 
 size_t XboxGamepadDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) {
-    ESP_LOGE(LOG_TAG, "Before xbox descriptor alloc");
-    
-    if(sizeof(XboxOneS_1914_HIDDescriptor) < bufferSize){
-        memcpy(buffer, XboxOneS_1914_HIDDescriptor, sizeof(XboxOneS_1914_HIDDescriptor));
+    if(sizeof(XboxOneS_1708_HIDDescriptor) < bufferSize){
+        memcpy(buffer, XboxOneS_1708_HIDDescriptor, sizeof(XboxOneS_1708_HIDDescriptor));
     } else {
         return -1;
     }
     
-    return sizeof(XboxOneS_1914_HIDDescriptor);
+    return sizeof(XboxOneS_1708_HIDDescriptor);
 }
 
 // XboxGamepadDevice methods
@@ -118,21 +116,21 @@ XboxGamepadDevice::~XboxGamepadDevice() {
     }
 }
 
-BLEHostConfiguration XboxGamepadDevice::getFakedHostConfiguration() {
+BLEHostConfiguration XboxGamepadDevice::getFakedHostConfiguration(const XboxControllerIdentifier& identifier) {
     // Fake a xbox controller
     BLEHostConfiguration config;
 
     // Vendor: Microsoft
-    config.setVidSource(0x02);
-    config.setVid(XBOX_VENDOR_ID); 
+    config.setVidSource(identifier.vendorIdSource);
+    config.setVid(identifier.vendorId); 
     
     // Product: Xbox One Wireless Controller - Model 1708 pre 2021 firmware
     // Specifically picked since it provides rumble support on linux kernels earlier than 6.5
-    config.setPid(XBOX_1914_PRODUCT_ID); 
-    config.setGuidVersion(XBOX_1914_BCD_DEVICE_ID);
+    config.setPid(identifier.productId); 
+    config.setGuidVersion(identifier.bcdDeviceId);
 
     // Serial: Probably don't need this
-    config.setSerialNumber(XBOX_1914_SERIAL);
+    config.setSerialNumber(identifier.serial);
 
     return config;
 }

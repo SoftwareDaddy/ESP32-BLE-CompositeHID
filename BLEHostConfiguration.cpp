@@ -8,7 +8,7 @@ BLEHostConfiguration::BLEHostConfiguration() :
     _modelNumber("1.0.0"),
     _softwareRevision("1.0.0"),
     _serialNumber("0123456789"),
-    _firmwareRevision("0.5.2"),
+    _firmwareRevision("1.0.0"),
     _hardwareRevision("1.0.0"),
     _systemID("")
 {               
@@ -19,20 +19,20 @@ uint16_t BLEHostConfiguration::getVid(){ return _vid; }
 uint16_t BLEHostConfiguration::getPid(){ return _pid; }
 uint16_t BLEHostConfiguration::getGuidVersion(){ return _guidVersion; }
 
-char *BLEHostConfiguration::getModelNumber(){ return _modelNumber; }
-char *BLEHostConfiguration::getSoftwareRevision(){ return _softwareRevision; }
-char *BLEHostConfiguration::getSerialNumber(){ return _serialNumber; }
-char *BLEHostConfiguration::getFirmwareRevision(){ return _firmwareRevision; }
-char *BLEHostConfiguration::getHardwareRevision(){ return _hardwareRevision; }
-char *BLEHostConfiguration::getSystemID(){ return _systemID; }
+const char* BLEHostConfiguration::getModelNumber(){ return _modelNumber.c_str(); }
+const char* BLEHostConfiguration::getSoftwareRevision(){ return _softwareRevision.c_str(); }
+const char* BLEHostConfiguration::getSerialNumber(){ return _serialNumber.c_str(); }
+const char* BLEHostConfiguration::getFirmwareRevision(){ return _firmwareRevision.c_str(); }
+const char* BLEHostConfiguration::getHardwareRevision(){ return _hardwareRevision.c_str(); }
+const char* BLEHostConfiguration::getSystemID(){ return _systemID.c_str(); }
 
 void BLEHostConfiguration::setVidSource(uint8_t value) { _vidSource = value; }
 void BLEHostConfiguration::setVid(uint16_t value) { _vid = value; }
 void BLEHostConfiguration::setPid(uint16_t value) { _pid = value; }
 void BLEHostConfiguration::setGuidVersion(uint16_t value) { _guidVersion = value; }
 
-void BLEHostConfiguration::setModelNumber(char *value) { _modelNumber = value; }
-void BLEHostConfiguration::setSoftwareRevision(char *value) { _softwareRevision = value; }
-void BLEHostConfiguration::setSerialNumber(char *value) { _serialNumber = value; }
-void BLEHostConfiguration::setFirmwareRevision(char *value) { _firmwareRevision = value; }
-void BLEHostConfiguration::setHardwareRevision(char *value) { _hardwareRevision = value; }
+void BLEHostConfiguration::setModelNumber(const char *value) { _modelNumber = std::string(value); }
+void BLEHostConfiguration::setSoftwareRevision(const char *value) { _softwareRevision = std::string(value); }
+void BLEHostConfiguration::setSerialNumber(const char *value) { _serialNumber = std::string(value); }
+void BLEHostConfiguration::setFirmwareRevision(const char *value) { _firmwareRevision = std::string(value); }
+void BLEHostConfiguration::setHardwareRevision(const char *value) { _hardwareRevision = std::string(value); }

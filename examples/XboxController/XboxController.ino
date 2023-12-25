@@ -39,8 +39,14 @@ void setup()
     // The composite HID device pretends to be a valid Xbox controller via vendor and product IDs (VID/PID).
     // Platforms like windows/linux need this in order to pick an XInput driver,
     // rather than using the generic BLE GATT HID driver. 
-    BLEHostConfiguration config = XboxGamepadDevice::getFakedHostConfiguration();
+    BLEHostConfiguration config = XboxGamepadDevice::getFakedHostConfiguration(XboxOneSControllerIdentifier);
     
+    Serial.println("Setting VID source to " + String(config.getVidSource(), HEX));
+    Serial.println("Setting VID to " + String(config.getVid(), HEX));
+    Serial.println("Setting PID to " + String(config.getPid(), HEX));
+    Serial.println("Setting GUID version to " + String(config.getGuidVersion(), HEX));
+    Serial.println("Setting serial number to " + String(config.getSerialNumber()));
+
     // Start the composite HID device to broadcast HID reports
     Serial.println("Starting composite HID device...");
     compositeHID->begin(config);
