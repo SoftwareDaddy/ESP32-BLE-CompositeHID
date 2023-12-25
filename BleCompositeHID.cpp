@@ -214,7 +214,7 @@ void BleCompositeHID::taskServer(void *pvParameter)
     BleCompositeHIDInstance->_hid->pnp(vidSource, vid, pid, guidVersion);
     BleCompositeHIDInstance->_hid->hidInfo(0x00, 0x01);
 
-    NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_SC); //BLE_SM_PAIR_AUTHREQ_BOND
+    NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);  //BLE_SM_PAIR_AUTHREQ_SC
 
     // uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
     // memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);

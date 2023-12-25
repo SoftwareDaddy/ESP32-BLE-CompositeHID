@@ -5,6 +5,7 @@
 #include <HIDKeyboardTypes.h>
 #include <NimBLECharacteristic.h>
 #include <NimBLEHIDDevice.h>
+#include "BLEHostConfiguration.h"
 
 // Forwards
 class BleCompositeHID;
@@ -21,6 +22,7 @@ public:
     void setHidReportId(uint8_t value);
 
     virtual const char* getDeviceName();
+    virtual BLEHostConfiguration getIdealHostConfiguration();
     virtual uint8_t getDeviceReportSize() = 0;
     virtual size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) = 0;
 

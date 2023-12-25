@@ -11,6 +11,10 @@ const char* BaseCompositeDeviceConfiguration::getDeviceName() {
     return "BaseCompositeDevice";
 }
 
+BLEHostConfiguration BaseCompositeDeviceConfiguration::getIdealHostConfiguration(){
+    return BLEHostConfiguration();
+}
+
 bool BaseCompositeDeviceConfiguration::getAutoReport() { return _autoReport; }
 uint8_t BaseCompositeDeviceConfiguration::getReportId() { return _reportId; }
 

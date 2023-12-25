@@ -31,7 +31,7 @@ void setup()
     gamepad->onVibrate.attach(vibrationSlot);
 
     // Set up composite HID device to hold our controller device
-    compositeHID = new BleCompositeHID("Xbox Wireless Controller", "Microsoft", 100);
+    compositeHID = new BleCompositeHID("CompositeHID Xbox Controller", "Mystfit", 100);
 
     // Add all child devices to the top-level composite HID device to manage them
     compositeHID->addDevice(gamepad);
@@ -39,7 +39,7 @@ void setup()
     // The composite HID device pretends to be a valid Xbox controller via vendor and product IDs (VID/PID).
     // Platforms like windows/linux need this in order to pick an XInput driver,
     // rather than using the generic BLE GATT HID driver. 
-    BLEHostConfiguration config = XboxGamepadDevice::getFakedHostConfiguration(XboxOneSControllerIdentifier);
+    BLEHostConfiguration config = gamepad->getDeviceConfig()->getIdealHostConfiguration();
     
     Serial.println("Setting VID source to " + String(config.getVidSource(), HEX));
     Serial.println("Setting VID to " + String(config.getVid(), HEX));

@@ -8,6 +8,7 @@
 #include "BaseCompositeDevice.h"
 #include "GamepadDevice.h"
 #include "XboxDescriptors.h"
+#include "XboxGamepadConfiguration.h"
 
 // Button bitmasks
 #define XBOX_BUTTON_A 0x01
@@ -81,31 +82,23 @@ public:
 };
 
 struct XboxGamepadInputReportData {
-    uint16_t x = 0;
-    uint16_t y = 0;
-    uint16_t z = 0;
-    uint16_t rz = 0;
-    uint16_t brake = 0;         // 10 bits for brake + 6 bit padding (2 bytes)
-    uint16_t accelerator = 0;   // 10 bits for accelerator + 6bit padding
-    uint8_t hat = 0x00;         // 4bits for hat switch + 4 bit padding (1 byte) 
+    uint16_t x = 0;             // Left joystick X
+    uint16_t y = 0;             // Left joystick Y
+    uint16_t z = 0;             // Right jostick X
+    uint16_t rz = 0;            // Right joystick Y
+    uint16_t brake = 0;         // 10 bits for brake (left trigger) + 6 bit padding (2 bytes)
+    uint16_t accelerator = 0;   // 10 bits for accelerator (right trigger) + 6bit padding
+    uint8_t hat = 0x00;         // 4bits for hat switch (Dpad) + 4 bit padding (1 byte) 
     uint16_t buttons = 0x00;    // 15 * 1bit for buttons + 1 bit padding (2 bytes)
-    uint8_t share = 0x00;      // 1 bits for share button + 7 bit padding (1 byte)
+    uint8_t share = 0x00;      // 1 bits for share/menu button + 7 bit padding (1 byte)
 };
 
-class XboxGamepadDeviceConfiguration : public BaseCompositeDeviceConfiguration {
-public:
-    XboxGamepadDeviceConfiguration(uint8_t reportId = XBOX_INPUT_REPORT_ID);
-    uint8_t getDeviceReportSize() override;
-    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
-};
 
 
 class XboxGamepadDevice : public BaseCompositeDevice {
 public:
-    XboxGamepadDevice(const XboxGamepadDeviceConfiguration& config = XboxGamepadDeviceConfiguration());
+    XboxGamepadDevice(XboxGamepadDeviceConfiguration* config = new XboxOneSControllerDeviceConfiguration());
     ~XboxGamepadDevice();
-
-    static BLEHostConfiguration getFakedHostConfiguration(const XboxControllerIdentifier& identifier);
 
     void init(NimBLEHIDDevice* hid) override;
     BaseCompositeDeviceConfiguration* getDeviceConfig() override;
@@ -132,11 +125,11 @@ public:
 
 
 private:
-    XboxGamepadDeviceConfiguration _config;
     XboxGamepadInputReportData _inputReport;
 
     NimBLECharacteristic* _extra_input;
     XboxGamepadCallbacks* _callbacks;
+    XboxGamepadDeviceConfiguration* _config;
 };
 
 #endif // XBOX_GAMEPAD_DEVICE_H

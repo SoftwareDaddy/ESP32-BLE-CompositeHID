@@ -4,9 +4,13 @@
 
 #include <stdint.h>
 
+#define VENDOR_BLUETOOTH_SOURCE 0x01
+#define VENDOR_USB_SOURCE 0x02
 #define XBOX_VENDOR_ID 0x045E
 
-#define XBOX_1708_PRODUCT_ID 0x02fd //Bluetooth. Wired is 0x02EA? See https://discourse.libsdl.org/t/sdl-be-more-explicit-about-xbox-360-one-device-ids/31666
+// Product: Xbox One S controller (supports linux kernel < 6.5)
+// Menu/select button replaces share button
+#define XBOX_1708_PRODUCT_ID 0x02fd
 #define XBOX_1708_BCD_DEVICE_ID 0x0408
 #define XBOX_1708_SERIAL "3033363030343037323136373239"
 
@@ -16,34 +20,6 @@
 #define XBOX_1914_BCD_DEVICE_ID 0x0509
 #define XBOX_1914_SERIAL "3039373130303637313034303231"
 
-
-// Product: Xbox One Wireless Controller - Model 1708 pre 2021 firmware
-// Specifically picked since it provides rumble support on linux kernels earlier than 6.5
-// No share button, it maps to the select button instead
-
-struct XboxControllerIdentifier {
-    uint8_t vendorIdSource;
-    uint16_t vendorId;
-    uint16_t productId;
-    uint16_t bcdDeviceId;
-    const char* serial;
-};
-
-const static XboxControllerIdentifier XboxOneSControllerIdentifier = {
-    0x02,                           // VendorIdSource
-    XBOX_VENDOR_ID,                 // VendorId
-    XBOX_1708_PRODUCT_ID,           // ProductId
-    XBOX_1708_BCD_DEVICE_ID,        // BCD Device Id
-    XBOX_1708_SERIAL                // Serial
-};
-
-const static XboxControllerIdentifier XboxSeriesXControllerIdentifier = {
-    0x02,                           // VendorIdSource
-    XBOX_VENDOR_ID,                 // VendorId
-    XBOX_1914_PRODUCT_ID,           // ProductId
-    XBOX_1914_BCD_DEVICE_ID,        // BCD Device Id
-    XBOX_1914_SERIAL                // Serial
-};
 
 #define XBOX_INPUT_REPORT_ID 0x01
 #define XBOX_EXTRA_INPUT_REPORT_ID 0x02

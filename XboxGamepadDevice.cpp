@@ -58,47 +58,8 @@ void XboxGamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, Statu
     ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onStatus, status: %d, code: %d", status, code);
 }
 
-// XboxGamepadDeviceConfiguration methods
-XboxGamepadDeviceConfiguration::XboxGamepadDeviceConfiguration(uint8_t reportId) : BaseCompositeDeviceConfiguration(reportId) {
-    
-}
-
-uint8_t XboxGamepadDeviceConfiguration::getDeviceReportSize() {
-    // Return the size of the device report
-    
-    // Input
-    // 2 * 16bit (2 bytes) for X and Y inclusive                = 4 bytes
-    // 2 * 16bit (2 bytes) for Z and Rz inclusive               = 4 bytes
-    // 1 * 10bit for brake + 6bit padding (2 bytes)             = 2 bytes
-    // 1 * 10bit for accelerator + 6bit padding (2 bytes)       = 2 bytes
-    // 1 * 4bit for hat switch + 4bit padding (1 byte)          = 1 byte
-    // 15 * 1bit for buttons + 1bit padding (2 bytes)           = 2 bytes
-    // 1 * 1bit for record button + 7bit padding (1 byte)       = 1 byte
-
-    // Additional input?
-    // 1 * 1bit + 7bit padding (1 byte)                         = 1 byte
-
-    // TODO: Split output size into seperate function
-    // Output 
-    // 1 * 4bit for DC Enable Actuators + 4bit padding (1 byte) = 1 byte
-    // 4 * 8bit for Magnitude (4 bytes)                         = 4 bytes
-    // 3 * 8bit for Duration, Start Delay, Loop Count (3 bytes) = 3 bytes
-
-    return 16;//sizeof(XboxGamepadInputReportData);
-}
-
-size_t XboxGamepadDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) {
-    if(sizeof(XboxOneS_1708_HIDDescriptor) < bufferSize){
-        memcpy(buffer, XboxOneS_1708_HIDDescriptor, sizeof(XboxOneS_1708_HIDDescriptor));
-    } else {
-        return -1;
-    }
-    
-    return sizeof(XboxOneS_1708_HIDDescriptor);
-}
-
 // XboxGamepadDevice methods
-XboxGamepadDevice::XboxGamepadDevice(const XboxGamepadDeviceConfiguration& config) :
+XboxGamepadDevice::XboxGamepadDevice(XboxGamepadDeviceConfiguration* config) :
     _config(config),
     _extra_input(nullptr),
     _callbacks(nullptr)
@@ -116,25 +77,6 @@ XboxGamepadDevice::~XboxGamepadDevice() {
     }
 }
 
-BLEHostConfiguration XboxGamepadDevice::getFakedHostConfiguration(const XboxControllerIdentifier& identifier) {
-    // Fake a xbox controller
-    BLEHostConfiguration config;
-
-    // Vendor: Microsoft
-    config.setVidSource(identifier.vendorIdSource);
-    config.setVid(identifier.vendorId); 
-    
-    // Product: Xbox One Wireless Controller - Model 1708 pre 2021 firmware
-    // Specifically picked since it provides rumble support on linux kernels earlier than 6.5
-    config.setPid(identifier.productId); 
-    config.setGuidVersion(identifier.bcdDeviceId);
-
-    // Serial: Probably don't need this
-    config.setSerialNumber(identifier.serial);
-
-    return config;
-}
-
 void XboxGamepadDevice::init(NimBLEHIDDevice* hid) {
     /// Create input characteristic to send events to the computer
     auto input = hid->inputReport(XBOX_INPUT_REPORT_ID);
@@ -150,7 +92,7 @@ void XboxGamepadDevice::init(NimBLEHIDDevice* hid) {
 
 BaseCompositeDeviceConfiguration* XboxGamepadDevice::getDeviceConfig() {
     // Return the device configuration
-    return &_config;
+    return _config;
 }
 
 void XboxGamepadDevice::resetInputs() {
@@ -162,7 +104,7 @@ void XboxGamepadDevice::press(uint16_t button) {
     if (!isPressed(button))
     {
         _inputReport.buttons |= button;
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -174,7 +116,7 @@ void XboxGamepadDevice::release(uint16_t button) {
     if (isPressed(button))
     {
         _inputReport.buttons ^= button;
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -192,7 +134,7 @@ void XboxGamepadDevice::setLeftThumb(int16_t x, int16_t y) {
     if(_inputReport.x != x || _inputReport.y != y){
         _inputReport.x = (uint16_t)(x + 0x8000);
         _inputReport.y = (uint16_t)(y + 0x8000);
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -206,7 +148,7 @@ void XboxGamepadDevice::setRightThumb(int16_t z, int16_t rZ) {
     if(_inputReport.z != z || _inputReport.rz != rZ){
         _inputReport.z = (uint16_t)(z + 0x8000);
         _inputReport.rz = (uint16_t)(rZ+ 0x8000);
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -218,7 +160,7 @@ void XboxGamepadDevice::setLeftTrigger(uint16_t value) {
 
     if (_inputReport.brake != value) {
         _inputReport.brake = value;
-        if (_config.getAutoReport()) {
+        if (_config->getAutoReport()) {
             sendGamepadReport();
         }
     }
@@ -229,7 +171,7 @@ void XboxGamepadDevice::setRightTrigger(uint16_t value) {
 
     if (_inputReport.accelerator != value) {
         _inputReport.accelerator = value;
-        if (_config.getAutoReport()) {
+        if (_config->getAutoReport()) {
             sendGamepadReport();
         }
     }
@@ -242,7 +184,7 @@ void XboxGamepadDevice::setTriggers(uint16_t left, uint16_t right) {
     if (_inputReport.brake != left || _inputReport.accelerator != right) {
         _inputReport.brake = left;
         _inputReport.accelerator = right;
-        if (_config.getAutoReport()) {
+        if (_config->getAutoReport()) {
             sendGamepadReport();
         }
     }
@@ -253,7 +195,7 @@ void XboxGamepadDevice::pressDPadDirection(uint8_t direction) {
     if (!isDPadPressed(direction))
     {
         _inputReport.hat |= direction;
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -264,7 +206,7 @@ void XboxGamepadDevice::releaseDPadDirection(uint8_t direction) {
     if (isDPadPressed(direction))
     {
         _inputReport.hat ^= direction;
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -280,7 +222,7 @@ void XboxGamepadDevice::pressShare() {
     if (!(_inputReport.share & XBOX_BUTTON_SHARE))
     {
         _inputReport.share |= XBOX_BUTTON_SHARE;
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -291,7 +233,7 @@ void XboxGamepadDevice::releaseShare() {
     if (_inputReport.share & XBOX_BUTTON_SHARE)
     {
         _inputReport.share ^= XBOX_BUTTON_SHARE;
-        if (_config.getAutoReport())
+        if (_config->getAutoReport())
         {
             sendGamepadReport();
         }
@@ -308,7 +250,7 @@ void XboxGamepadDevice::sendGamepadReport(){
     if(!parentDevice->isConnected())
         return;
 
-    size_t packedSize = _config.getDeviceReportSize();
+    size_t packedSize = _config->getDeviceReportSize();
     uint8_t packedData[packedSize] = {
         (uint8_t)(_inputReport.x & 0xff), (uint8_t)(_inputReport.x >> 8),
         (uint8_t)(_inputReport.y & 0xff), (uint8_t)(_inputReport.y >> 8),
