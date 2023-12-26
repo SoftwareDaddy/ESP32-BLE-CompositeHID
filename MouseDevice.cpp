@@ -1,6 +1,17 @@
 #include "MouseDevice.h"
 #include "BleCompositeHID.h"
 
+MouseDevice::MouseDevice():
+    _config(MouseConfiguration()), // Use default config
+    _mouseButtons(),
+    _mouseX(0),
+    _mouseY(0),
+    _mouseWheel(0),
+    _mouseHWheel(0)
+{
+    this->resetButtons();
+}
+
 MouseDevice::MouseDevice(const MouseConfiguration& config):
     _config(config), // Copy config to avoid modification
     _mouseButtons(),

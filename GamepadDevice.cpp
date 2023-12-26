@@ -33,6 +33,46 @@ void GamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, Status st
     ESP_LOGD(LOG_TAG, "GamepadCallbacks::onStatus, status: %d, code: %d", status, code);
 }
 
+GamepadDevice::GamepadDevice() : 
+    _config(GamepadConfiguration()), 
+    _buttons(),
+    _specialButtons(),
+    _x(0),
+    _y(0),
+    _z(0),
+    _rZ(0),
+    _rX(0),
+    _rY(0),
+    _slider1(0),
+    _slider2(0),
+    _rudder(0),
+    _throttle(0),
+    _accelerator(0),
+    _brake(0),
+    _steering(0),
+    _hat1(0),
+    _hat2(0),
+    _hat3(0),
+    _hat4(0),
+    _callbacks(nullptr),
+    _setEffectCharacteristic(nullptr),
+    _setEnvelopeCharacteristic(nullptr),
+    _setConditionCharacteristic(nullptr),
+    _setPeriodicCharacteristic(nullptr),
+    _setConstantCharacteristic(nullptr),
+    _setRampCharacteristic(nullptr),
+    _setCustomForceCharacteristic(nullptr),
+    _downloadForceCharacteristic(nullptr),
+    _effectOperationCharacteristic(nullptr),
+    _pidDeviceControlCharacteristic(nullptr),
+    _deviceGainCharacteristic(nullptr),
+    _pidState(nullptr),
+    _createNewEffect(nullptr),
+    _pidBlockLoad(nullptr),
+    _pidPool(nullptr)
+{
+    this->resetButtons();
+}
 
 GamepadDevice::GamepadDevice(const GamepadConfiguration& config):
     _config(config), 

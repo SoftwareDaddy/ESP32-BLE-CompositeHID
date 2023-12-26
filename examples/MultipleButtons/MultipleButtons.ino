@@ -8,9 +8,11 @@
  */
 
 #include <Arduino.h>
-#include <BleGamepad.h> // https://github.com/lemmingDev/ESP32-BLE-Gamepad
+#include <GamepadDevice.h>
+#include <BleCompositeHID.h>
 
-BleGamepad bleGamepad;
+BleCompositeHID compositeHID;
+GamepadDevice* gamepad;
 
 #define numOfButtons 10
 
@@ -28,17 +30,20 @@ void setup()
         currentButtonStates[currentPinIndex] = HIGH;
     }
 
-    BleGamepadConfiguration bleGamepadConfig;
+    GamepadConfiguration bleGamepadConfig;
     bleGamepadConfig.setAutoReport(false);
     bleGamepadConfig.setButtonCount(numOfButtons);
-    bleGamepad.begin(&bleGamepadConfig);
+    gamepad = new GamepadDevice(bleGamepadConfig);
+
+    compositeHID.addDevice(gamepad);
+    compositeHID.begin();
 
     // changing bleGamepadConfig after the begin function has no effect, unless you call the begin function again
 }
 
 void loop()
 {
-    if (bleGamepad.isConnected())
+    if (compositeHID.isConnected())
     {
         for (byte currentIndex = 0; currentIndex < numOfButtons; currentIndex++)
         {
@@ -48,11 +53,11 @@ void loop()
             {
                 if (currentButtonStates[currentIndex] == LOW)
                 {
-                    bleGamepad.press(physicalButtons[currentIndex]);
+                    gamepad->press(physicalButtons[currentIndex]);
                 }
                 else
                 {
-                    bleGamepad.release(physicalButtons[currentIndex]);
+                    gamepad->release(physicalButtons[currentIndex]);
                 }
             }
         }
@@ -64,7 +69,7 @@ void loop()
                 previousButtonStates[currentIndex] = currentButtonStates[currentIndex];
             }
 
-            bleGamepad.sendReport();
+            gamepad->sendGamepadReport();
         }
 
         delay(20);

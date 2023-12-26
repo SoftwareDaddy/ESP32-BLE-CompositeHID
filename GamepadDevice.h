@@ -53,6 +53,7 @@ private:
     GamepadCallbacks* _callbacks;
 
 public:
+    GamepadDevice();
     GamepadDevice(const GamepadConfiguration& config);
     ~GamepadDevice();
 

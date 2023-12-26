@@ -1,56 +1,59 @@
 #include <BleConnectionStatus.h>
 
 #include <BleCompositeHID.h>
-
 #include <GamepadDevice.h>
 #include <MouseDevice.h>
 
-#include <GamepadConfiguration.h>
-#include <MouseConfiguration.h>
-
-int ledPin = 5;              // LED connected to digital pin 13
 
 GamepadDevice* gamepad;
 MouseDevice* mouse;
-BleCompositeHID compositeHID;
+BleCompositeHID compositeHID("CompositeHID Gamepad and Mouse", "Mystfit", 100);
 
 void setup() {
   Serial.begin(115200);
-  pinMode(ledPin, OUTPUT);    // sets the digital pin as output
   
   // Set up gamepad
   GamepadConfiguration gamepadConfig;
   gamepadConfig.setButtonCount(8);
   gamepadConfig.setHatSwitchCount(0);
   gamepad = new GamepadDevice(gamepadConfig);
-  Serial.println("Created gamepad device");
 
   // Set up mouse
-  MouseConfiguration mouseConfig;
-  mouse = new MouseDevice(mouseConfig);
-  Serial.println("Created mouse device");
+  mouse = new MouseDevice();
 
   // Add both devices to the composite HID device to manage them
   compositeHID.addDevice(gamepad);
   compositeHID.addDevice(mouse);
 
   // Start the composite HID device to broadcast HID reports
-  Serial.println("Starting composite HID device...");
   compositeHID.begin();
-  Serial.println("Composite HID device started");
 }
 
 void loop() {
-  // Test gamepad
-  digitalWrite(ledPin, LOW);
-  
-  gamepad->press(BUTTON_1);
-  mouse->mousePress(MOUSE_LOGICAL_RIGHT_BUTTON);
-  delay(1000);               
-  
-  gamepad->release(BUTTON_1);
-  mouse->mouseRelease(MOUSE_LOGICAL_RIGHT_BUTTON);
-  digitalWrite(ledPin, HIGH);
+  if(compositeHID.isConnected()){
 
-  delay(1000);
+    // Test gamepad
+    gamepad->press(BUTTON_3);
+    delay(500);               
+    gamepad->release(BUTTON_3);
+    delay(500);
+
+    // Test mouse
+    int startTime = millis();
+    int reportCount = 0;
+    while(millis() - startTime < 8000){
+        reportCount++;
+        int8_t x = round(cos((float)millis() / 1000.0f) * 10.0f);
+        int8_t y = round(sin((float)millis() / 1000.0f) * 10.0f);
+
+        mouse->mouseMove(x, y);
+        mouse->sendMouseReport();
+        
+        if(reportCount % 8 == 0)
+            Serial.println("Setting relative mouse to " + String(x) + ", " + String(y));
+            
+        delay(10);
+    }
+    delay(1000);
+  }
 }

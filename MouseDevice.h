@@ -19,6 +19,7 @@ private:
     signed char _mouseHWheel;
 
 public:
+    MouseDevice();
     MouseDevice(const MouseConfiguration& config);
     
     void init(NimBLEHIDDevice* hid) override;

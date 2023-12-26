@@ -7,15 +7,18 @@
 
 #include <Arduino.h>
 #include <Keypad.h>     // https://github.com/Chris--A/Keypad
-#include <BleGamepad.h> // https://github.com/lemmingDev/ESP32-BLE-Gamepad
+#include <GamepadDevice.h>
+#include <BleCompositeHID.h>
 
-BleGamepad bleGamepad("ESP32 Keypad", "lemmingDev", 100); // Shows how you can customise the device name, manufacturer name and initial battery level
+// Shows how you can customise the device name, manufacturer name and initial battery level
+BleCompositeHID compositeHID("ESP32 Keypad", "lemmingDev", 100);
+GamepadDevice* gamepad;
 
 #define ROWS 4
 #define COLS 4
 uint8_t rowPins[ROWS] = {2, 13, 14, 25}; // ESP32 pins used for rows      --> adjust to suit --> Pinout on board: R1, R2, R3, R4
 uint8_t colPins[COLS] = {4, 23, 21, 22}; // ESP32 pins used for columns   --> adjust to suit --> Pinout on board: Q1, Q2, Q3, Q4
-uint8_t keymap[ROWS][COLS] =
+uint8_t keypadToButtonMap[ROWS][COLS] =
     {
         {1, 2, 3, 4},    // Buttons  1,  2,  3,  4      --> Used for calulating the bitmask for sending to the library
         {5, 6, 7, 8},    // Buttons  5,  6,  7,  8      --> Adjust to suit which buttons you want the library to send
@@ -23,15 +26,18 @@ uint8_t keymap[ROWS][COLS] =
         {13, 14, 15, 16} // Buttons 13, 14, 15, 16      --> Eg. The value 12 in the array refers to button 12
 };
 
-Keypad customKeypad = Keypad(makeKeymap(keymap), rowPins, colPins, ROWS, COLS);
+Keypad customKeypad = Keypad(makeKeymap(keypadToButtonMap), rowPins, colPins, ROWS, COLS);
 
 void setup()
 {
-    BleGamepadConfiguration bleGamepadConfig;
+    GamepadConfiguration bleGamepadConfig;
     bleGamepadConfig.setAutoReport(false); // Disable auto reports --> You then need to force HID updates with bleGamepad.sendReport()
-    bleGamepad.begin();                    // Begin library with default buttons/hats/axes
-
+    
+    gamepad = new GamepadDevice(bleGamepadConfig); // Creates a gamepad with 128 buttons, 2 hat switches and x, y, z, rZ, rX, rY and 2 sliders (no simulation controls enabled by default)
     // changing bleGamepadConfig after the begin function has no effect, unless you call the begin function again
+
+    compositeHID.addDevice(gamepad); 
+	compositeHID.begin();
 }
 
 void loop()
@@ -50,18 +56,18 @@ void KeypadUpdate()
         {
             uint8_t keystate = customKeypad.key[i].kstate;
 
-            if (bleGamepad.isConnected())
+            if (compositeHID.isConnected())
             {
                 if (keystate == PRESSED)
                 {
-                    bleGamepad.press(customKeypad.key[i].kchar);
+                    gamepad->press(customKeypad.key[i].kchar);
                 } // Press or release button based on the current state
                 if (keystate == RELEASED)
                 {
-                    bleGamepad.release(customKeypad.key[i].kchar);
+                    gamepad->release(customKeypad.key[i].kchar);
                 }
 
-                bleGamepad.sendReport(); // Send the HID report after values for all button states are updated, and at least one button state had changed
+                gamepad->sendGamepadReport(); // Send the HID report after values for all button states are updated, and at least one button state had changed
             }
         }
     }

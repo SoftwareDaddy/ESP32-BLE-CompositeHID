@@ -66,6 +66,11 @@ BleCompositeHID::~BleCompositeHID()
     delete this->_connectionStatus;
 }
 
+void BleCompositeHID::begin()
+{
+    this->begin(BLEHostConfiguration());
+}
+
 void BleCompositeHID::begin(const BLEHostConfiguration& config)
 {
     _configuration = config; // we make a copy, so the user can't change actual values midway through operation, without calling the begin function again

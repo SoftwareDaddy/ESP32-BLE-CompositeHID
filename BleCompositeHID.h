@@ -20,7 +20,8 @@ class BleCompositeHID
 public:
     BleCompositeHID(std::string deviceName = "ESP32 BLE Gamepad", std::string deviceManufacturer = "Espressif", uint8_t batteryLevel = 100);
     ~BleCompositeHID();
-    void begin(const BLEHostConfiguration& config = BLEHostConfiguration());
+    void begin();
+    void begin(const BLEHostConfiguration& config);
     void end();
 
     void setBatteryLevel(uint8_t level);

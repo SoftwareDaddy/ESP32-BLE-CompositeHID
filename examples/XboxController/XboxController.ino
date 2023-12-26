@@ -37,8 +37,7 @@ void setup()
     compositeHID->addDevice(gamepad);
 
     // The composite HID device pretends to be a valid Xbox controller via vendor and product IDs (VID/PID).
-    // Platforms like windows/linux need this in order to pick an XInput driver,
-    // rather than using the generic BLE GATT HID driver. 
+    // Platforms like windows/linux need this in order to pick an XInput driver over the generic BLE GATT HID driver. 
     BLEHostConfiguration config = gamepad->getDeviceConfig()->getIdealHostConfiguration();
     
     Serial.println("Setting VID source to " + String(config.getVidSource(), HEX));
@@ -71,7 +70,7 @@ void testButtons(){
         XBOX_BUTTON_RB, 
         XBOX_BUTTON_START,
         XBOX_BUTTON_SELECT,
-        //XBOX_BUTTON_HOME,
+        XBOX_BUTTON_HOME,
         XBOX_BUTTON_LS, 
         XBOX_BUTTON_RS
     };
