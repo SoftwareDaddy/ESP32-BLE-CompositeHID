@@ -7,16 +7,16 @@ BaseCompositeDeviceConfiguration::BaseCompositeDeviceConfiguration(uint8_t repor
 {
 }
 
-const char* BaseCompositeDeviceConfiguration::getDeviceName() {
+const char* BaseCompositeDeviceConfiguration::getDeviceName() const {
     return "BaseCompositeDevice";
 }
 
-BLEHostConfiguration BaseCompositeDeviceConfiguration::getIdealHostConfiguration(){
+BLEHostConfiguration BaseCompositeDeviceConfiguration::getIdealHostConfiguration() const {
     return BLEHostConfiguration();
 }
 
-bool BaseCompositeDeviceConfiguration::getAutoReport() { return _autoReport; }
-uint8_t BaseCompositeDeviceConfiguration::getReportId() { return _reportId; }
+bool BaseCompositeDeviceConfiguration::getAutoReport() const { return _autoReport; }
+uint8_t BaseCompositeDeviceConfiguration::getReportId() const { return _reportId; }
 
 void BaseCompositeDeviceConfiguration::setAutoReport(bool value) { _autoReport = value; }
 void BaseCompositeDeviceConfiguration::setHidReportId(uint8_t value) { _reportId = value; }

@@ -136,7 +136,7 @@ void GamepadDevice::init(NimBLEHIDDevice* hid)
     setCharacteristics(input, output);
 }
 
-BaseCompositeDeviceConfiguration* GamepadDevice::getDeviceConfig()
+const BaseCompositeDeviceConfiguration* GamepadDevice::getDeviceConfig() const
 {
     return &_config;
 }

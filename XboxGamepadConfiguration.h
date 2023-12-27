@@ -7,20 +7,28 @@
 class XboxGamepadDeviceConfiguration : public BaseCompositeDeviceConfiguration {
 public:
     XboxGamepadDeviceConfiguration(uint8_t reportId = XBOX_INPUT_REPORT_ID);
+    virtual uint8_t getDeviceReportSize() const override { return 0; }
+    virtual size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) const override { 
+        return -1;
+    }
 };
 
 
 class XboxOneSControllerDeviceConfiguration : public XboxGamepadDeviceConfiguration {
-    BLEHostConfiguration getIdealHostConfiguration() override;
-    uint8_t getDeviceReportSize() override;
-    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
+public:
+    virtual const char* getDeviceName() const { return "XboxOneS"; }
+    virtual BLEHostConfiguration getIdealHostConfiguration() const override;
+    virtual uint8_t getDeviceReportSize() const override;
+    virtual size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) const override;
 };
 
 
 class XboxSeriesXControllerDeviceConfiguration : public XboxGamepadDeviceConfiguration {
-    BLEHostConfiguration getIdealHostConfiguration() override;
-    uint8_t getDeviceReportSize() override;
-    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
+public:
+    virtual const char* getDeviceName() const { return "XboxSeriesX"; }
+    virtual BLEHostConfiguration getIdealHostConfiguration() const override;
+    virtual uint8_t getDeviceReportSize() const override;
+    virtual size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) const override;
 };
 
 #endif // XBOX_GAMEPAD_CONFIGURATION_H

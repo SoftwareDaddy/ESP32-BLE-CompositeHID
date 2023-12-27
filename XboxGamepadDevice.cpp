@@ -58,6 +58,13 @@ void XboxGamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, Statu
     ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onStatus, status: %d, code: %d", status, code);
 }
 
+XboxGamepadDevice::XboxGamepadDevice() :
+    _config(new XboxOneSControllerDeviceConfiguration()),
+    _extra_input(nullptr),
+    _callbacks(nullptr)
+{
+}
+
 // XboxGamepadDevice methods
 XboxGamepadDevice::XboxGamepadDevice(XboxGamepadDeviceConfiguration* config) :
     _config(config),
@@ -70,10 +77,17 @@ XboxGamepadDevice::~XboxGamepadDevice() {
     if (getOutput() && _callbacks){
         getOutput()->setCallbacks(nullptr);
         delete _callbacks;
+        _callbacks = nullptr;
     }
 
     if(_extra_input){
         delete _extra_input;
+        _extra_input = nullptr;
+    }
+
+    if(_config){
+        delete _config;
+        _config = nullptr;
     }
 }
 
@@ -90,7 +104,7 @@ void XboxGamepadDevice::init(NimBLEHIDDevice* hid) {
     setCharacteristics(input, output);
 }
 
-BaseCompositeDeviceConfiguration* XboxGamepadDevice::getDeviceConfig() {
+const BaseCompositeDeviceConfiguration* XboxGamepadDevice::getDeviceConfig() const {
     // Return the device configuration
     return _config;
 }
@@ -251,6 +265,7 @@ void XboxGamepadDevice::sendGamepadReport(){
         return;
 
     size_t packedSize = _config->getDeviceReportSize();
+    ESP_LOGD(LOG_TAG, "Allocating gamepad report, size: %d", packedSize);
     uint8_t packedData[packedSize] = {
         (uint8_t)(_inputReport.x & 0xff), (uint8_t)(_inputReport.x >> 8),
         (uint8_t)(_inputReport.y & 0xff), (uint8_t)(_inputReport.y >> 8),
@@ -263,6 +278,7 @@ void XboxGamepadDevice::sendGamepadReport(){
         (uint8_t)_inputReport.share
     };
 
+    ESP_LOGD(LOG_TAG, "Sending gamepad report, size: %d", packedSize);
     input->setValue(packedData, packedSize);
     input->notify();
 }

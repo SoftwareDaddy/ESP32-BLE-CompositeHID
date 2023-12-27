@@ -7,7 +7,7 @@ XboxGamepadDeviceConfiguration::XboxGamepadDeviceConfiguration(uint8_t reportId)
 {
 }
 
-BLEHostConfiguration XboxOneSControllerDeviceConfiguration::getIdealHostConfiguration() {
+BLEHostConfiguration XboxOneSControllerDeviceConfiguration::getIdealHostConfiguration() const {
     // Fake a xbox controller
     BLEHostConfiguration config;
 
@@ -24,7 +24,7 @@ BLEHostConfiguration XboxOneSControllerDeviceConfiguration::getIdealHostConfigur
     return config;
 }
 
-uint8_t XboxOneSControllerDeviceConfiguration::getDeviceReportSize() {
+uint8_t XboxOneSControllerDeviceConfiguration::getDeviceReportSize() const {
     // Return the size of the device report
     
     // Input
@@ -48,7 +48,7 @@ uint8_t XboxOneSControllerDeviceConfiguration::getDeviceReportSize() {
     return 16;//sizeof(XboxGamepadInputReportData);
 }
 
-size_t XboxOneSControllerDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) {
+size_t XboxOneSControllerDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) const {
     size_t hidDescriptorSize = sizeof(XboxOneS_1708_HIDDescriptor);
     if(hidDescriptorSize < bufferSize){
         memcpy(buffer, XboxOneS_1708_HIDDescriptor, hidDescriptorSize);
@@ -63,7 +63,7 @@ size_t XboxOneSControllerDeviceConfiguration::makeDeviceReport(uint8_t* buffer, 
 // -------------------------------------
 
 
-BLEHostConfiguration XboxSeriesXControllerDeviceConfiguration::getIdealHostConfiguration() {
+BLEHostConfiguration XboxSeriesXControllerDeviceConfiguration::getIdealHostConfiguration() const {
     // Fake a xbox controller
     BLEHostConfiguration config;
 
@@ -80,7 +80,7 @@ BLEHostConfiguration XboxSeriesXControllerDeviceConfiguration::getIdealHostConfi
     return config;
 }
 
-uint8_t XboxSeriesXControllerDeviceConfiguration::getDeviceReportSize() {
+uint8_t XboxSeriesXControllerDeviceConfiguration::getDeviceReportSize() const {
     // Return the size of the device report
     
     // Input
@@ -104,13 +104,12 @@ uint8_t XboxSeriesXControllerDeviceConfiguration::getDeviceReportSize() {
     return 16;//sizeof(XboxGamepadInputReportData);
 }
 
-size_t XboxSeriesXControllerDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) {
-    ssize_t hidDescriptorSize = sizeof(XboxOneS_1914_HIDDescriptor);
+size_t XboxSeriesXControllerDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) const {
+    size_t hidDescriptorSize = sizeof(XboxOneS_1914_HIDDescriptor);
     if(hidDescriptorSize < bufferSize){
         memcpy(buffer, XboxOneS_1914_HIDDescriptor, hidDescriptorSize);
     } else {
         return -1;
     }
-    
     return hidDescriptorSize;
 }

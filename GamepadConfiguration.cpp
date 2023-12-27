@@ -24,11 +24,12 @@ GamepadConfiguration::GamepadConfiguration() :
 {
 }
 
-const char* GamepadConfiguration::getDeviceName() {
+const char* GamepadConfiguration::getDeviceName() const 
+{
     return GAMEPAD_DEVICE_NAME;
 }
 
-uint8_t GamepadConfiguration::getDeviceReportSize()
+uint8_t GamepadConfiguration::getDeviceReportSize() const
 {
     uint8_t numOfButtonBytes = getButtonNumBytes();
     uint8_t numOfSpecialButtonBytes = getSpecialButtonNumBytes();
@@ -39,7 +40,7 @@ uint8_t GamepadConfiguration::getDeviceReportSize()
     return reportSize;
 }
 
-size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize)
+size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) const
 {
     // Report description START -------------------------------------------------
 
@@ -495,7 +496,7 @@ size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize
 }
 
 
-uint8_t GamepadConfiguration::getTotalSpecialButtonCount()
+uint8_t GamepadConfiguration::getTotalSpecialButtonCount() const
 {
     int count = 0;
     for (int i = 0; i < POSSIBLESPECIALBUTTONS; i++)
@@ -506,7 +507,7 @@ uint8_t GamepadConfiguration::getTotalSpecialButtonCount()
     return count;
 }
 
-uint8_t GamepadConfiguration::getDesktopSpecialButtonCount()
+uint8_t GamepadConfiguration::getDesktopSpecialButtonCount() const
 {
     int count = 0;
     for (int i = 0; i < 3; i++)
@@ -517,7 +518,7 @@ uint8_t GamepadConfiguration::getDesktopSpecialButtonCount()
     return count;
 }
 
-uint8_t GamepadConfiguration::getConsumerSpecialButtonCount()
+uint8_t GamepadConfiguration::getConsumerSpecialButtonCount() const
 {
     int count = 0;
     for (int i = 3; i < 8; i++)
@@ -528,7 +529,7 @@ uint8_t GamepadConfiguration::getConsumerSpecialButtonCount()
     return count;
 }
 
-uint8_t GamepadConfiguration::getAxisCount()
+uint8_t GamepadConfiguration::getAxisCount() const
 {
     int count = 0;
     for (int i = 0; i < POSSIBLEAXES; i++)
@@ -539,7 +540,7 @@ uint8_t GamepadConfiguration::getAxisCount()
     return count;
 }
 
-uint8_t GamepadConfiguration::getSimulationCount()
+uint8_t GamepadConfiguration::getSimulationCount() const
 {
     int count = 0;
     for (int i = 0; i < POSSIBLESIMULATIONCONTROLS; i++)
@@ -550,38 +551,39 @@ uint8_t GamepadConfiguration::getSimulationCount()
     return count;
 }
 
-uint16_t GamepadConfiguration::getButtonCount() { return _buttonCount; }
-uint8_t GamepadConfiguration::getHatSwitchCount() { return _hatSwitchCount; }
-int16_t GamepadConfiguration::getAxesMin(){ return _axesMin; }
-int16_t GamepadConfiguration::getAxesMax(){ return _axesMax; }
-int16_t GamepadConfiguration::getSimulationMin(){ return _simulationMin; }
-int16_t GamepadConfiguration::getSimulationMax(){ return _simulationMax; }
-uint8_t GamepadConfiguration::getControllerType() { return _controllerType; }
-bool GamepadConfiguration::getIncludeStart() { return _whichSpecialButtons[START_BUTTON]; }
-bool GamepadConfiguration::getIncludeSelect() { return _whichSpecialButtons[SELECT_BUTTON]; }
-bool GamepadConfiguration::getIncludeMenu() { return _whichSpecialButtons[MENU_BUTTON]; }
-bool GamepadConfiguration::getIncludeHome() { return _whichSpecialButtons[HOME_BUTTON]; }
-bool GamepadConfiguration::getIncludeBack() { return _whichSpecialButtons[BACK_BUTTON]; }
-bool GamepadConfiguration::getIncludeVolumeInc() { return _whichSpecialButtons[VOLUME_INC_BUTTON]; }
-bool GamepadConfiguration::getIncludeVolumeDec() { return _whichSpecialButtons[VOLUME_DEC_BUTTON]; }
-bool GamepadConfiguration::getIncludeVolumeMute() { return _whichSpecialButtons[VOLUME_MUTE_BUTTON]; }
+uint16_t GamepadConfiguration::getButtonCount() const { return _buttonCount; }
+uint8_t GamepadConfiguration::getHatSwitchCount() const { return _hatSwitchCount; }
+int16_t GamepadConfiguration::getAxesMin() const { return _axesMin; }
+int16_t GamepadConfiguration::getAxesMax() const { return _axesMax; }
+int16_t GamepadConfiguration::getSimulationMin() const { return _simulationMin; }
+int16_t GamepadConfiguration::getSimulationMax() const { return _simulationMax; }
+uint8_t GamepadConfiguration::getControllerType() const { return _controllerType; }
+bool GamepadConfiguration::getIncludeStart() const { return _whichSpecialButtons[START_BUTTON]; }
+bool GamepadConfiguration::getIncludeSelect() const { return _whichSpecialButtons[SELECT_BUTTON]; }
+bool GamepadConfiguration::getIncludeMenu() const { return _whichSpecialButtons[MENU_BUTTON]; }
+bool GamepadConfiguration::getIncludeHome() const { return _whichSpecialButtons[HOME_BUTTON]; }
+bool GamepadConfiguration::getIncludeBack() const { return _whichSpecialButtons[BACK_BUTTON]; }
+bool GamepadConfiguration::getIncludeVolumeInc() const { return _whichSpecialButtons[VOLUME_INC_BUTTON]; }
+bool GamepadConfiguration::getIncludeVolumeDec() const { return _whichSpecialButtons[VOLUME_DEC_BUTTON]; }
+bool GamepadConfiguration::getIncludeVolumeMute() const { return _whichSpecialButtons[VOLUME_MUTE_BUTTON]; }
 const bool *GamepadConfiguration::getWhichSpecialButtons() const { return _whichSpecialButtons; }
-bool GamepadConfiguration::getIncludeXAxis() { return _whichAxes[X_AXIS]; }
-bool GamepadConfiguration::getIncludeYAxis() { return _whichAxes[Y_AXIS]; }
-bool GamepadConfiguration::getIncludeZAxis() { return _whichAxes[Z_AXIS]; }
-bool GamepadConfiguration::getIncludeRxAxis() { return _whichAxes[RX_AXIS]; }
-bool GamepadConfiguration::getIncludeRyAxis() { return _whichAxes[RY_AXIS]; }
-bool GamepadConfiguration::getIncludeRzAxis() { return _whichAxes[RZ_AXIS]; }
-bool GamepadConfiguration::getIncludeSlider1() { return _whichAxes[SLIDER1]; }
-bool GamepadConfiguration::getIncludeSlider2() { return _whichAxes[SLIDER2]; }
+bool GamepadConfiguration::getIncludeXAxis() const { return _whichAxes[X_AXIS]; }
+bool GamepadConfiguration::getIncludeYAxis() const { return _whichAxes[Y_AXIS]; }
+bool GamepadConfiguration::getIncludeZAxis() const { return _whichAxes[Z_AXIS]; }
+bool GamepadConfiguration::getIncludeRxAxis() const { return _whichAxes[RX_AXIS]; }
+bool GamepadConfiguration::getIncludeRyAxis() const { return _whichAxes[RY_AXIS]; }
+bool GamepadConfiguration::getIncludeRzAxis() const { return _whichAxes[RZ_AXIS]; }
+bool GamepadConfiguration::getIncludeSlider1() const { return _whichAxes[SLIDER1]; }
+bool GamepadConfiguration::getIncludeSlider2() const { return _whichAxes[SLIDER2]; }
 const bool *GamepadConfiguration::getWhichAxes() const { return _whichAxes; }
-bool GamepadConfiguration::getIncludeRudder() { return _whichSimulationControls[RUDDER]; }
-bool GamepadConfiguration::getIncludeThrottle() { return _whichSimulationControls[THROTTLE]; }
-bool GamepadConfiguration::getIncludeAccelerator() { return _whichSimulationControls[ACCELERATOR]; }
-bool GamepadConfiguration::getIncludeBrake() { return _whichSimulationControls[BRAKE]; }
-bool GamepadConfiguration::getIncludeSteering() { return _whichSimulationControls[STEERING]; }
+bool GamepadConfiguration::getIncludeRudder() const { return _whichSimulationControls[RUDDER]; }
+bool GamepadConfiguration::getIncludeThrottle() const { return _whichSimulationControls[THROTTLE]; }
+bool GamepadConfiguration::getIncludeAccelerator() const { return _whichSimulationControls[ACCELERATOR]; }
+bool GamepadConfiguration::getIncludeBrake() const { return _whichSimulationControls[BRAKE]; }
+bool GamepadConfiguration::getIncludeSteering() const { return _whichSimulationControls[STEERING]; }
 const bool *GamepadConfiguration::getWhichSimulationControls() const { return _whichSimulationControls; }
-bool GamepadConfiguration::getIncludeRumble() { return _includeRumble; }
+bool GamepadConfiguration::getIncludeRumble() const { return _includeRumble; }
+
 void GamepadConfiguration::setIncludeRumble(bool value) { _includeRumble = value; }
 
 void GamepadConfiguration::setWhichSpecialButtons(bool start, bool select, bool menu, bool home, bool back, bool volumeInc, bool volumeDec, bool volumeMute)
@@ -648,7 +650,7 @@ void GamepadConfiguration::setSimulationMin(int16_t value) { _simulationMin = va
 void GamepadConfiguration::setSimulationMax(int16_t value) { _simulationMax = value; }
 
 
-uint8_t GamepadConfiguration::getButtonNumBytes()
+uint8_t GamepadConfiguration::getButtonNumBytes() const
 {
     uint8_t buttonNumBytes = this->getButtonCount() / 8;
     if (getButtonNumPaddingBits() > 0){
@@ -658,7 +660,7 @@ uint8_t GamepadConfiguration::getButtonNumBytes()
     return buttonNumBytes;
 }
 
-uint8_t GamepadConfiguration::getButtonNumPaddingBits()
+uint8_t GamepadConfiguration::getButtonNumPaddingBits() const
 {
     uint8_t buttonPaddingBits = 8 - (this->getButtonCount() % 8);
     if (buttonPaddingBits == 8)
@@ -668,7 +670,7 @@ uint8_t GamepadConfiguration::getButtonNumPaddingBits()
     return buttonPaddingBits;
 }
 
-uint8_t GamepadConfiguration::getSpecialButtonNumBytes()
+uint8_t GamepadConfiguration::getSpecialButtonNumBytes() const
 {
     uint8_t specialButtonNumBytes = this->getTotalSpecialButtonCount() / 8;
     if (getSpecialButtonNumPaddingBits() > 0){
@@ -678,7 +680,7 @@ uint8_t GamepadConfiguration::getSpecialButtonNumBytes()
     return specialButtonNumBytes;
 }
 
-uint8_t GamepadConfiguration::getSpecialButtonNumPaddingBits()
+uint8_t GamepadConfiguration::getSpecialButtonNumPaddingBits() const
 {
     uint8_t specialButtonPaddingBits = 8 - (this->getTotalSpecialButtonCount() % 8);
     if (specialButtonPaddingBits == 8)

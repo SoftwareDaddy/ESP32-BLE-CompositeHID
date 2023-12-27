@@ -161,13 +161,14 @@ void BleCompositeHID::taskServer(void *pvParameter)
     // Setup child devices
     for(auto device : BleCompositeHIDInstance->_devices){
         device->init(BleCompositeHIDInstance->_hid);
-        size_t reportSize = device->getDeviceConfig()->makeDeviceReport(tempHidReportDescriptor + hidReportDescriptorSize, totalBufferSize);
+        auto config = device->getDeviceConfig();
+        size_t reportSize = config->makeDeviceReport(tempHidReportDescriptor + hidReportDescriptorSize, totalBufferSize);
+
         if(reportSize < 0){
-            ESP_LOGE(LOG_TAG, "Error creating report for device %s", device->getDeviceConfig()->getDeviceName());
+            ESP_LOGE(LOG_TAG, "Error creating report for device %s", config->getDeviceName());
             break;
         } else {
-            std::string hexbuf = uint8_to_hex_string(tempHidReportDescriptor + hidReportDescriptorSize, reportSize);
-            ESP_LOGD(LOG_TAG, "Created device %s with report size %d and HID report descriptor: %s", device->getDeviceConfig()->getDeviceName(), reportSize, hexbuf);
+            ESP_LOGD(LOG_TAG, "Created device %s with report size %d", config->getDeviceName(), reportSize);
         }
         hidReportDescriptorSize += reportSize;
     }

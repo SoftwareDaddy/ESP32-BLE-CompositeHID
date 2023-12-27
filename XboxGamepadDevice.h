@@ -97,11 +97,12 @@ struct XboxGamepadInputReportData {
 
 class XboxGamepadDevice : public BaseCompositeDevice {
 public:
-    XboxGamepadDevice(XboxGamepadDeviceConfiguration* config = new XboxOneSControllerDeviceConfiguration());
+    XboxGamepadDevice();
+    XboxGamepadDevice(XboxGamepadDeviceConfiguration* config);
     ~XboxGamepadDevice();
 
     void init(NimBLEHIDDevice* hid) override;
-    BaseCompositeDeviceConfiguration* getDeviceConfig() override;
+    const BaseCompositeDeviceConfiguration* getDeviceConfig() const override;
 
     Signal<XboxGamepadOutputReportData> onVibrate;
 

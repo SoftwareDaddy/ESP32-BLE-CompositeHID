@@ -28,18 +28,18 @@ private:
 public:
     MouseConfiguration();
 
-    const char* getDeviceName() override;
-    uint8_t getDeviceReportSize() override;
-    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
-    uint8_t getMouseButtonNumBytes();
+    const char* getDeviceName() const override;
+    uint8_t getDeviceReportSize() const override;
+    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) const override;
+    uint8_t getMouseButtonNumBytes() const;
 
-    uint16_t getMouseButtonCount();
-    uint16_t getMouseAxisCount();
+    uint16_t getMouseButtonCount() const;
+    uint16_t getMouseAxisCount() const;
 
     void setMouseButtonCount(uint16_t value);
 
 private:
-    uint8_t getMouseButtonPaddingBits();
+    uint8_t getMouseButtonPaddingBits() const;
 };
 
 #endif

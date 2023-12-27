@@ -264,49 +264,49 @@ class GamepadConfiguration : public BaseCompositeDeviceConfiguration
 public:
     GamepadConfiguration();
 
-    const char* getDeviceName() override;
-    uint8_t getDeviceReportSize() override;
-    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) override;
-    uint8_t getButtonNumBytes();
-    uint8_t getSpecialButtonNumBytes();
+    const char* getDeviceName() const override;
+    uint8_t getDeviceReportSize() const override;
+    size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) const override;
+    uint8_t getButtonNumBytes() const;
+    uint8_t getSpecialButtonNumBytes() const;
 
-    uint8_t getControllerType();
-    uint16_t getButtonCount();
-    uint8_t getTotalSpecialButtonCount();
-    uint8_t getDesktopSpecialButtonCount();
-    uint8_t getConsumerSpecialButtonCount();
-    uint8_t getHatSwitchCount();
-    uint8_t getAxisCount();
-    uint8_t getSimulationCount();
-    bool getIncludeStart();
-    bool getIncludeSelect();
-    bool getIncludeMenu();
-    bool getIncludeHome();
-    bool getIncludeBack();
-    bool getIncludeVolumeInc();
-    bool getIncludeVolumeDec();
-    bool getIncludeVolumeMute();
+    uint8_t getControllerType() const;
+    uint16_t getButtonCount() const;
+    uint8_t getTotalSpecialButtonCount() const;
+    uint8_t getDesktopSpecialButtonCount() const;
+    uint8_t getConsumerSpecialButtonCount() const;
+    uint8_t getHatSwitchCount() const;
+    uint8_t getAxisCount() const;
+    uint8_t getSimulationCount() const;
+    bool getIncludeStart() const;
+    bool getIncludeSelect() const;
+    bool getIncludeMenu() const;
+    bool getIncludeHome() const;
+    bool getIncludeBack() const;
+    bool getIncludeVolumeInc() const;
+    bool getIncludeVolumeDec() const;
+    bool getIncludeVolumeMute() const;
     const bool *getWhichSpecialButtons() const;
-    bool getIncludeXAxis();
-    bool getIncludeYAxis();
-    bool getIncludeZAxis();
-    bool getIncludeRxAxis();
-    bool getIncludeRyAxis();
-    bool getIncludeRzAxis();
-    bool getIncludeSlider1();
-    bool getIncludeSlider2();
+    bool getIncludeXAxis() const;
+    bool getIncludeYAxis() const;
+    bool getIncludeZAxis() const;
+    bool getIncludeRxAxis() const;
+    bool getIncludeRyAxis() const;
+    bool getIncludeRzAxis() const;
+    bool getIncludeSlider1() const;
+    bool getIncludeSlider2() const;
     const bool *getWhichAxes() const;
-    bool getIncludeRudder();
-    bool getIncludeThrottle();
-    bool getIncludeAccelerator();
-    bool getIncludeBrake();
-    bool getIncludeSteering();
+    bool getIncludeRudder()  const;
+    bool getIncludeThrottle() const;
+    bool getIncludeAccelerator() const;
+    bool getIncludeBrake() const;
+    bool getIncludeSteering() const;
     const bool *getWhichSimulationControls() const;
-    int16_t getAxesMin();
-    int16_t getAxesMax();
-    int16_t getSimulationMin();
-    int16_t getSimulationMax();
-    bool getIncludeRumble();
+    int16_t getAxesMin() const;
+    int16_t getAxesMax() const;
+    int16_t getSimulationMin() const;
+    int16_t getSimulationMax() const;
+    bool getIncludeRumble() const;
 
     void setControllerType(uint8_t controllerType);
     void setButtonCount(uint16_t value);
@@ -344,8 +344,8 @@ public:
     void setIncludeRumble(bool value);
 
 private:
-    uint8_t getButtonNumPaddingBits();
-    uint8_t getSpecialButtonNumPaddingBits();
+    uint8_t getButtonNumPaddingBits() const;
+    uint8_t getSpecialButtonNumPaddingBits() const;
 
     private:
     uint8_t _controllerType;

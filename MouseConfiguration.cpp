@@ -7,11 +7,11 @@ MouseConfiguration::MouseConfiguration() :
 {               
 }
 
-const char* MouseConfiguration::getDeviceName() { 
+const char* MouseConfiguration::getDeviceName() const { 
     return MOUSE_DEVICE_NAME; 
 }
 
-uint8_t MouseConfiguration::getDeviceReportSize()
+uint8_t MouseConfiguration::getDeviceReportSize() const
 {
     // TODO: Make number of mouse buttons dynamic
     uint8_t numOfMouseButtonBytes = this->getMouseButtonNumBytes(); // 5 buttons @ 1 bit each means we need 3 bits of padding to pad to a byte
@@ -24,7 +24,7 @@ uint8_t MouseConfiguration::getDeviceReportSize()
     return mouseReportSize;
 }
 
-size_t MouseConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize)
+size_t MouseConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) const
 {
     uint8_t tempHidReportDescriptor[150];
     int hidReportDescriptorSize = 0;
@@ -161,8 +161,8 @@ size_t MouseConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize)
     return hidReportDescriptorSize;
 }
 
-uint16_t MouseConfiguration::getMouseButtonCount(){ return _mouseButtonCount; }
-uint16_t MouseConfiguration::getMouseAxisCount(){ 
+uint16_t MouseConfiguration::getMouseButtonCount() const { return _mouseButtonCount; }
+uint16_t MouseConfiguration::getMouseAxisCount() const { 
     int count = 0;
     for (int i = 0; i < MOUSE_POSSIBLE_AXIS_COUNT; i++)
     {
@@ -174,7 +174,7 @@ uint16_t MouseConfiguration::getMouseAxisCount(){
 
 void MouseConfiguration::setMouseButtonCount(uint16_t value) { _mouseButtonCount = value; }
 
-uint8_t MouseConfiguration::getMouseButtonPaddingBits()
+uint8_t MouseConfiguration::getMouseButtonPaddingBits() const
 {
     uint8_t mouseButtonPaddingBits = 8 - (this->getMouseButtonCount() % 8);
     if (mouseButtonPaddingBits == 8)
@@ -185,7 +185,7 @@ uint8_t MouseConfiguration::getMouseButtonPaddingBits()
     return mouseButtonPaddingBits;
 }
 
-uint8_t MouseConfiguration::getMouseButtonNumBytes()
+uint8_t MouseConfiguration::getMouseButtonNumBytes() const
 {
     uint8_t numOfMouseButtonBytes = this->getMouseButtonCount() / 8;
     if (getMouseButtonPaddingBits() > 0)

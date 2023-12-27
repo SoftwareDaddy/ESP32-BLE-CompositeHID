@@ -15,16 +15,16 @@ class BaseCompositeDeviceConfiguration
 public:
     BaseCompositeDeviceConfiguration(uint8_t reportId);
 
-    bool getAutoReport();
-    uint8_t getReportId();
+    bool getAutoReport() const;
+    uint8_t getReportId() const;
 
     void setAutoReport(bool value);
     void setHidReportId(uint8_t value);
 
-    virtual const char* getDeviceName();
-    virtual BLEHostConfiguration getIdealHostConfiguration();
-    virtual uint8_t getDeviceReportSize() = 0;
-    virtual size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) = 0;
+    virtual const char* getDeviceName() const;
+    virtual BLEHostConfiguration getIdealHostConfiguration() const;
+    virtual uint8_t getDeviceReportSize() const = 0;
+    virtual size_t makeDeviceReport(uint8_t* buffer, size_t bufferSize) const = 0;
 
 private:
     bool _autoReport;
@@ -37,7 +37,7 @@ class BaseCompositeDevice
     friend class BleCompositeHID;
 public:
     virtual void init(NimBLEHIDDevice* hid) = 0;
-    virtual BaseCompositeDeviceConfiguration* getDeviceConfig() = 0;
+    virtual const BaseCompositeDeviceConfiguration* getDeviceConfig() const = 0;
     
     BleCompositeHID* getParent();
 
