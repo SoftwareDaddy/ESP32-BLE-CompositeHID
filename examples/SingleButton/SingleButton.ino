@@ -3,23 +3,27 @@
  */
 
 #include <Arduino.h>
-#include <BleGamepad.h> // https://github.com/lemmingDev/ESP32-BLE-Gamepad
+#include <GamepadDevice.h>
+#include <BleCompositeHID.h>
 
 #define BUTTONPIN 35 // Pin button is attached to
 
-BleGamepad bleGamepad;
+BleCompositeHID compositeHID;
+GamepadDevice* gamepad;
 
 int previousButton1State = HIGH;
 
 void setup()
 {
     pinMode(BUTTONPIN, INPUT_PULLUP);
-    bleGamepad.begin();
+    gamepad = new GamepadDevice();
+    compositeHID.addDevice(gamepad);
+    compositeHID.begin();
 }
 
 void loop()
 {
-    if (bleGamepad.isConnected())
+    if (compositeHID.isConnected())
     {
 
         int currentButton1State = digitalRead(BUTTONPIN);
@@ -28,11 +32,11 @@ void loop()
         {
             if (currentButton1State == LOW)
             {
-                bleGamepad.press(BUTTON_1);
+                gamepad->press(BUTTON_1);
             }
             else
             {
-                bleGamepad.release(BUTTON_1);
+                gamepad->release(BUTTON_1);
             }
         }
         previousButton1State = currentButton1State;

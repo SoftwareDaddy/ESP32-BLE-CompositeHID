@@ -1,12 +1,15 @@
 #include <Arduino.h>
-#include <BleGamepad.h>
+#include <GamepadDevice.h>
+#include <BleCompositeHID.h>
 
-BleGamepad bleGamepad;
+BleCompositeHID compositeHID;
+GamepadDevice* gamepad;
 
 void setup()
 {
     Serial.begin(115200);
-    BleGamepadConfiguration bleGamepadConfig;
+
+    GamepadConfiguration bleGamepadConfig;
     bleGamepadConfig.setWhichSpecialButtons(true, true, true, true, true, true, true, true);
     // Can also enable special buttons individually with the following <-- They are all disabled by default
     // bleGamepadConfig.setIncludeStart(true);
@@ -17,59 +20,61 @@ void setup()
     // bleGamepadConfig.setIncludeVolumeInc(true);
     // bleGamepadConfig.setIncludeVolumeDec(true);
     // bleGamepadConfig.setIncludeVolumeMute(true);
-    bleGamepad.begin(&bleGamepadConfig);
 
+    gamepad = new GamepadDevice(bleGamepadConfig);
+    compositeHID.addDevice(gamepad);
+    compositeHID.begin();
     // Changing bleGamepadConfig after the begin function has no effect, unless you call the begin function again
 }
 
 void loop()
 {
-    if (bleGamepad.isConnected())
+    if (compositeHID.isConnected())
     {
         Serial.println("Pressing start and select");
-        bleGamepad.pressStart();
+        gamepad->pressStart();
         delay(100);
-        bleGamepad.releaseStart();
+        gamepad->releaseStart();
         delay(100);
-        bleGamepad.pressSelect();
+        gamepad->pressSelect();
         delay(100);
-        bleGamepad.releaseSelect();
+        gamepad->releaseSelect();
         delay(100);
 
         Serial.println("Increasing volume");
-        bleGamepad.pressVolumeInc();
+        gamepad->pressVolumeInc();
         delay(100);
-        bleGamepad.releaseVolumeInc();
+        gamepad->releaseVolumeInc();
         delay(100);
-        bleGamepad.pressVolumeInc();
+        gamepad->pressVolumeInc();
         delay(100);
-        bleGamepad.releaseVolumeInc();
+        gamepad->releaseVolumeInc();
         delay(100);
         
         Serial.println("Muting volume");
-        bleGamepad.pressVolumeMute();
+        gamepad->pressVolumeMute();
         delay(100);
-        bleGamepad.releaseVolumeMute();
+        gamepad->releaseVolumeMute();
         delay(1000);
-        bleGamepad.pressVolumeMute();
+        gamepad->pressVolumeMute();
         delay(100);
-        bleGamepad.releaseVolumeMute();
+        gamepad->releaseVolumeMute();
 
 
         Serial.println("Pressing menu and back");
-        bleGamepad.pressMenu();
+        gamepad->pressMenu();
         delay(100);
-        bleGamepad.releaseMenu();
+        gamepad->releaseMenu();
         delay(100);
-        bleGamepad.pressBack();
+        gamepad->pressBack();
         delay(100);
-        bleGamepad.releaseBack();
+        gamepad->releaseBack();
         delay(100);
 
         Serial.println("Pressing home");
-        bleGamepad.pressHome();
+        gamepad->pressHome();
         delay(100);
-        bleGamepad.releaseHome();
+        gamepad->releaseHome();
         delay(2000);
     }
 }

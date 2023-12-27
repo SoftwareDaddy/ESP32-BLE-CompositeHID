@@ -15,18 +15,23 @@
 
 #include <Arduino.h>
 #include <Bounce2.h>    // https://github.com/thomasfredericks/Bounce2
-#include <BleGamepad.h> // https://github.com/lemmingDev/ESP32-BLE-Gamepad
+#include <GamepadDevice.h>
+#include <BleCompositeHID.h>
+
+BleCompositeHID compositeHID;
+GamepadDevice* gamepad;
 
 #define numOfButtons 10
 
 Bounce debouncers[numOfButtons];
-BleGamepad bleGamepad;
 
 byte buttonPins[numOfButtons] = {0, 35, 17, 18, 19, 23, 25, 26, 27, 32};
 byte physicalButtons[numOfButtons] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
 void setup()
 {
+    Serial.begin(115200);
+
     for (byte currentPinIndex = 0; currentPinIndex < numOfButtons; currentPinIndex++)
     {
         pinMode(buttonPins[currentPinIndex], INPUT_PULLUP);
@@ -36,19 +41,21 @@ void setup()
         debouncers[currentPinIndex].interval(5);
     }
 
-    BleGamepadConfiguration bleGamepadConfig;
+    GamepadConfiguration bleGamepadConfig;
     bleGamepadConfig.setButtonCount(numOfButtons);
     bleGamepadConfig.setAutoReport(false);
-    bleGamepad.begin(&bleGamepadConfig);
+
+    gamepad = new GamepadDevice(bleGamepadConfig);
+
+    compositeHID.addDevice(gamepad);
+    compositeHID.begin();
 
     // changing bleGamepadConfig after the begin function has no effect, unless you call the begin function again
-
-    Serial.begin(115200);
 }
 
 void loop()
 {
-    if (bleGamepad.isConnected())
+    if (compositeHID.isConnected())
     {
         bool sendReport = false;
 
@@ -58,7 +65,7 @@ void loop()
 
             if (debouncers[currentIndex].fell())
             {
-                bleGamepad.press(physicalButtons[currentIndex]);
+                gamepad->press(physicalButtons[currentIndex]);
                 sendReport = true;
                 Serial.print("Button ");
                 Serial.print(physicalButtons[currentIndex]);
@@ -66,7 +73,7 @@ void loop()
             }
             else if (debouncers[currentIndex].rose())
             {
-                bleGamepad.release(physicalButtons[currentIndex]);
+                gamepad->release(physicalButtons[currentIndex]);
                 sendReport = true;
                 Serial.print("Button ");
                 Serial.print(physicalButtons[currentIndex]);
@@ -76,7 +83,7 @@ void loop()
 
         if (sendReport)
         {
-            bleGamepad.sendReport();
+            gamepad->sendGamepadReport();
         }
 
         // delay(20);	// (Un)comment to remove/add delay between loops

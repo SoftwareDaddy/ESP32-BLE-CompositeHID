@@ -8,9 +8,11 @@
  */
 
 #include <Arduino.h>
-#include <BleGamepad.h> // https://github.com/lemmingDev/ESP32-BLE-Gamepad
+#include <GamepadDevice.h>
+#include <BleCompositeHID.h>
 
-BleGamepad bleGamepad;
+BleCompositeHID compositeHID;
+GamepadDevice* gamepad;
 
 #define numOfButtons 4
 #define numOfHats 1 // Maximum 4 hat switches supported
@@ -42,18 +44,21 @@ void setup()
         currentHatStates[currentPinIndex] = HIGH;
     }
 
-    BleGamepadConfiguration bleGamepadConfig;
+    GamepadConfiguration bleGamepadConfig;
     bleGamepadConfig.setAutoReport(false);
     bleGamepadConfig.setButtonCount(numOfButtons);
     bleGamepadConfig.setHatSwitchCount(numOfHats);
-    bleGamepad.begin(&bleGamepadConfig);
+    gamepad = new GamepadDevice(bleGamepadConfig);
+
+    compositeHID.addDevice(gamepad);
+    compositeHID.begin();
 
     // changing bleGamepadConfig after the begin function has no effect, unless you call the begin function again
 }
 
 void loop()
 {
-    if (bleGamepad.isConnected())
+    if (compositeHID.isConnected())
     {
         // Deal with buttons
         for (byte currentIndex = 0; currentIndex < numOfButtons; currentIndex++)
@@ -64,11 +69,11 @@ void loop()
             {
                 if (currentButtonStates[currentIndex] == LOW)
                 {
-                    bleGamepad.press(physicalButtons[currentIndex]);
+                    gamepad->press(physicalButtons[currentIndex]);
                 }
                 else
                 {
-                    bleGamepad.release(physicalButtons[currentIndex]);
+                    gamepad->release(physicalButtons[currentIndex]);
                 }
             }
         }
@@ -119,7 +124,7 @@ void loop()
         }
 
         // Set hat values
-        bleGamepad.setHats(hatValues[0], hatValues[1], hatValues[2], hatValues[3]);
+        gamepad->setHats(hatValues[0], hatValues[1], hatValues[2], hatValues[3]);
 
         // Update previous states to current states and send report
         if (currentButtonStates != previousButtonStates || currentHatStates != previousHatStates)
@@ -134,7 +139,7 @@ void loop()
                 previousHatStates[currentIndex] = currentHatStates[currentIndex];
             }
 
-            bleGamepad.sendReport();
+            gamepad->sendGamepadReport();
         }
 
         delay(20);
