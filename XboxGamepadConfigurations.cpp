@@ -1,4 +1,5 @@
 #include "XboxGamepadConfiguration.h"
+#include "XboxGamepadDevice.h"
 
 
 // XboxGamepadDeviceConfiguration methods
@@ -45,7 +46,7 @@ uint8_t XboxOneSControllerDeviceConfiguration::getDeviceReportSize() const {
     // 4 * 8bit for Magnitude (4 bytes)                         = 4 bytes
     // 3 * 8bit for Duration, Start Delay, Loop Count (3 bytes) = 3 bytes
 
-    return 16;//sizeof(XboxGamepadInputReportData);
+    return sizeof(XboxGamepadInputReportData); //16
 }
 
 size_t XboxOneSControllerDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) const {
@@ -101,7 +102,7 @@ uint8_t XboxSeriesXControllerDeviceConfiguration::getDeviceReportSize() const {
     // 4 * 8bit for Magnitude (4 bytes)                         = 4 bytes
     // 3 * 8bit for Duration, Start Delay, Loop Count (3 bytes) = 3 bytes
 
-    return 16;//sizeof(XboxGamepadInputReportData);
+    return sizeof(XboxGamepadInputReportData); //16;
 }
 
 size_t XboxSeriesXControllerDeviceConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize) const {

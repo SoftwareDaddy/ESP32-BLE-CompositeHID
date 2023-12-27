@@ -74,7 +74,7 @@ void testButtons(){
         XBOX_BUTTON_RB, 
         XBOX_BUTTON_START,
         XBOX_BUTTON_SELECT,
-        //XBOX_BUTTON_HOME,
+        //XBOX_BUTTON_HOME,   // Uncomment this to test the hom/guide button. Steam will flip out and enter big picture mode when running this sketch though so be warned!
         XBOX_BUTTON_LS, 
         XBOX_BUTTON_RS
     };

@@ -70,7 +70,6 @@ private:
 };
 
 struct XboxGamepadOutputReportData {
-public:
     uint8_t dcEnableActuators = 0x00;   // 4bits for DC Enable Actuators, 4bits padding
     uint8_t leftTriggerMagnitude = 0;
     uint8_t rightTriggerMagnitude = 0; 
@@ -79,8 +78,20 @@ public:
     uint8_t duration = 0;               // UNUSED
     uint8_t startDelay = 0;             // UNUSED
     uint8_t loopCount = 0;              // UNUSED
+
+    constexpr XboxGamepadOutputReportData(uint64_t value = 0) noexcept : 
+        dcEnableActuators((value & 0xFF)),
+        leftTriggerMagnitude((value >> 8) & 0xFF),
+        rightTriggerMagnitude((value >> 16) & 0xFF),
+        weakMotorMagnitude((value >> 24) & 0xFF),
+        strongMotorMagnitude((value >> 32) & 0xFF),
+        duration((value >> 40) & 0xFF),
+        startDelay((value >> 48) & 0xFF),
+        loopCount((value >> 56) & 0xFF)
+    {}
 };
 
+#pragma pack(push, 1)
 struct XboxGamepadInputReportData {
     uint16_t x = 0;             // Left joystick X
     uint16_t y = 0;             // Left joystick Y
@@ -92,7 +103,7 @@ struct XboxGamepadInputReportData {
     uint16_t buttons = 0x00;    // 15 * 1bit for buttons + 1 bit padding (2 bytes)
     uint8_t share = 0x00;      // 1 bits for share/menu button + 7 bit padding (1 byte)
 };
-
+#pragma pack(pop)
 
 
 class XboxGamepadDevice : public BaseCompositeDevice {

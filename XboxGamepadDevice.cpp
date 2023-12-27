@@ -17,18 +17,7 @@ XboxGamepadCallbacks::XboxGamepadCallbacks(XboxGamepadDevice* device) : _device(
 void XboxGamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
 {    
     // An example packet we might receive from XInput might look like 0x0300002500ff00ff
-    uint64_t value = pCharacteristic->getValue<uint64_t>();
-
-    // ESP32 is little endian
-    XboxGamepadOutputReportData vibrationData;
-    vibrationData.dcEnableActuators = (value & 0xFF);
-    vibrationData.leftTriggerMagnitude = (value >> 8) & 0xFF;
-    vibrationData.rightTriggerMagnitude = (value >> 16) & 0xFF;
-    vibrationData.weakMotorMagnitude = (value >> 24) & 0xFF;
-    vibrationData.strongMotorMagnitude = (value >> 32) & 0xFF;
-    vibrationData.duration = (value >> 40) & 0xFF;
-    vibrationData.startDelay = (value >> 48) & 0xFF;
-    vibrationData.loopCount = (value >> 56) & 0xFF;
+    XboxGamepadOutputReportData vibrationData = pCharacteristic->getValue<uint64_t>();
     
     ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onWrite, Size: %d, DC enable: %d, magnitudeWeak: %d, magnitudeStrong: %d, duration: %d, start delay: %d, loop count: %d", 
         pCharacteristic->getValue().size(),
@@ -264,21 +253,8 @@ void XboxGamepadDevice::sendGamepadReport(){
     if(!parentDevice->isConnected())
         return;
 
-    size_t packedSize = _config->getDeviceReportSize();
-    ESP_LOGD(LOG_TAG, "Allocating gamepad report, size: %d", packedSize);
-    uint8_t packedData[packedSize] = {
-        (uint8_t)(_inputReport.x & 0xff), (uint8_t)(_inputReport.x >> 8),
-        (uint8_t)(_inputReport.y & 0xff), (uint8_t)(_inputReport.y >> 8),
-        (uint8_t)(_inputReport.z & 0xff), (uint8_t)(_inputReport.z >> 8),
-        (uint8_t)(_inputReport.rz & 0xff), (uint8_t)(_inputReport.rz >> 8),
-        (uint8_t)(_inputReport.brake & 0xff), (uint8_t)(_inputReport.brake >> 8),
-        (uint8_t)(_inputReport.accelerator & 0xff), (uint8_t)(_inputReport.accelerator >> 8),
-        (uint8_t)_inputReport.hat,
-        (uint8_t)(_inputReport.buttons & 0xff), (uint8_t)(_inputReport.buttons >> 8),
-        (uint8_t)_inputReport.share
-    };
-
+    size_t packedSize = sizeof(_inputReport);
     ESP_LOGD(LOG_TAG, "Sending gamepad report, size: %d", packedSize);
-    input->setValue(packedData, packedSize);
+    input->setValue((uint8_t*)&_inputReport, packedSize);
     input->notify();
 }
