@@ -6,7 +6,7 @@
 int ledPin = 5; // LED connected to digital pin 13
 
 XboxGamepadDevice *gamepad;
-BleCompositeHID compositeHID("CompositeHID Xbox Controller", "Mystfit", 100);
+BleCompositeHID compositeHID("CompositeHID XInput Controller", "Mystfit", 100);
 
 void OnVibrateEvent(XboxGamepadOutputReportData data)
 {
