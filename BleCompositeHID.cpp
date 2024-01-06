@@ -55,7 +55,7 @@ std::string uint8_to_hex_string(const uint8_t *v, const size_t s) {
 
 BleCompositeHID::BleCompositeHID(std::string deviceName, std::string deviceManufacturer, uint8_t batteryLevel) : _hid(nullptr)
 {
-    this->deviceName = deviceName;
+    this->deviceName = deviceName.substr(0, CONFIG_BT_NIMBLE_GAP_DEVICE_NAME_MAX_LEN - 1);
     this->deviceManufacturer = deviceManufacturer;
     this->batteryLevel = batteryLevel;
     this->_connectionStatus = new BleConnectionStatus();
@@ -146,27 +146,36 @@ void BleCompositeHID::taskServer(void *pvParameter)
     // Compiler adds 0x02 to the last value of board's base MAC address to get the BT MAC address, so take 0x02 away from the value you actually want when setting
     //uint8_t newMACAddress[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF - 0x02};
     //esp_base_mac_addr_set(&newMACAddress[0]); // Set new MAC address 
-    
     NimBLEDevice::init(BleCompositeHIDInstance->deviceName);
     NimBLEServer *pServer = NimBLEDevice::createServer();
     pServer->setCallbacks(BleCompositeHIDInstance->_connectionStatus);
 
     BleCompositeHIDInstance->_hid = new NimBLEHIDDevice(pServer);
-
+    
     // Setup the HID descriptor buffers
-    size_t totalBufferSize = BLE_ATT_ATTR_MAX_LEN;
+    size_t totalBufferSize = 2048;
     uint8_t tempHidReportDescriptor[totalBufferSize];
     int hidReportDescriptorSize = 0;
-
-    // Setup child devices
+    ESP_LOGD(LOG_TAG, "About to init devices");
+    
+    // Setup child devices to build the HID report descriptor
     for(auto device : BleCompositeHIDInstance->_devices){
+        ESP_LOGD(LOG_TAG, "Before device %s init", device->getDeviceConfig()->getDeviceName());
         device->init(BleCompositeHIDInstance->_hid);
+        ESP_LOGD(LOG_TAG, "After device %s init", device->getDeviceConfig()->getDeviceName());
+        
         auto config = device->getDeviceConfig();
         size_t reportSize = config->makeDeviceReport(tempHidReportDescriptor + hidReportDescriptorSize, totalBufferSize);
-
-        if(reportSize < 0){
+        
+        if(reportSize >= BLE_ATT_ATTR_MAX_LEN){
+            ESP_LOGE(LOG_TAG, "Device report size %d is larger than max buffer size %d", reportSize, BLE_ATT_ATTR_MAX_LEN);
+            return;
+        } else if(reportSize == 0){
+            ESP_LOGE(LOG_TAG, "Device report size is 0");
+            return;
+        } else if(reportSize < 0){
             ESP_LOGE(LOG_TAG, "Error creating report for device %s", config->getDeviceName());
-            break;
+            return;
         } else {
             ESP_LOGD(LOG_TAG, "Created device %s with report size %d", config->getDeviceName(), reportSize);
         }
@@ -174,13 +183,18 @@ void BleCompositeHID::taskServer(void *pvParameter)
     }
     ESP_LOGD(LOG_TAG, "Final hidReportDescriptorSize: %d", hidReportDescriptorSize);
 
-    uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
-    memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
+    // Set the report map
+    uint8_t customHidReportDescriptor[hidReportDescriptorSize];
+    memcpy(&customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
+    BleCompositeHIDInstance->_hid->reportMap(&customHidReportDescriptor[0], hidReportDescriptorSize);
 
+    // Set manufacturer info
     BleCompositeHIDInstance->_hid->manufacturer()->setValue(BleCompositeHIDInstance->deviceManufacturer);
 
+    // Create device UUID
     NimBLEService *pService = pServer->getServiceByUUID(SERVICE_UUID_DEVICE_INFORMATION);
 	
+    // Create characteristics
 	BLECharacteristic* pCharacteristic_Model_Number = pService->createCharacteristic(
       CHARACTERISTIC_UUID_MODEL_NUMBER,
       NIMBLE_PROPERTY::READ
@@ -217,32 +231,26 @@ void BleCompositeHID::taskServer(void *pvParameter)
     // );
     // pCharacteristic_Hardware_Revision->setValue();
 
+    // Set PnP IDs
     BleCompositeHIDInstance->_hid->pnp(vidSource, vid, pid, guidVersion);
     BleCompositeHIDInstance->_hid->hidInfo(0x00, 0x01);
 
     NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);  //BLE_SM_PAIR_AUTHREQ_SC
 
-    // uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
-    // memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
-
-    // Debug
-    std::stringstream ss;
-    for( size_t idx = 0; idx < hidReportDescriptorSize; ++idx ){
-        ss << std::hex << std::setw(2) << std::setfill('0') << (int)customHidReportDescriptor[idx];
-    }
-    ESP_LOGD(LOG_TAG, "Broadcasting HID report descriptor: %s", ss.str());
-    
-    BleCompositeHIDInstance->_hid->reportMap((uint8_t *)customHidReportDescriptor, hidReportDescriptorSize);
+    // Start BLE server
     BleCompositeHIDInstance->_hid->startServices();
-
     BleCompositeHIDInstance->onStarted(pServer);
 
+    // Start BLE advertisement
     NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
     pAdvertising->setAppearance(GENERIC_HID);
     pAdvertising->addServiceUUID(BleCompositeHIDInstance->_hid->hidService()->getUUID());
     pAdvertising->start();
+    ESP_LOGD(LOG_TAG, "Advertising started!");
+
+    // Update battery
     BleCompositeHIDInstance->_hid->setBatteryLevel(BleCompositeHIDInstance->batteryLevel);
 
-    ESP_LOGD(LOG_TAG, "Advertising started!");
-    vTaskDelay(portMAX_DELAY); // delay(portMAX_DELAY);
+    // Wait to let the server start up
+    vTaskDelay(portMAX_DELAY);
 }
