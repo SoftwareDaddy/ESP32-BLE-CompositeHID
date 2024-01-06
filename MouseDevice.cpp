@@ -41,7 +41,7 @@ void MouseDevice::resetButtons()
 // Mouse
 void MouseDevice::mouseClick(uint8_t button)
 {
-    // No-op?
+    // TODO: Send two reports one after the other for convience? Can't be both pressed and not pressed in a bitflag
 }
 
 void MouseDevice::mousePress(uint8_t button)

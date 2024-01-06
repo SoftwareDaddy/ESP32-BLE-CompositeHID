@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <string>
-#include <HIDKeyboardTypes.h>
+//#include <HIDKeyboardTypes.h>
 
 class BLEHostConfiguration
 {

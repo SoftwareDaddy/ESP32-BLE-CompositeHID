@@ -6,7 +6,7 @@
 #include <NimBLEServer.h>
 #include <NimBLEHIDDevice.h>
 #include <HIDTypes.h>
-#include <HIDKeyboardTypes.h>
+//#include <HIDKeyboardTypes.h>
 #include <driver/adc.h>
 #include "sdkconfig.h"
 
@@ -238,7 +238,7 @@ void BleCompositeHID::taskServer(void *pvParameter)
     BleCompositeHIDInstance->onStarted(pServer);
 
     NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
-    pAdvertising->setAppearance(HID_GAMEPAD);
+    pAdvertising->setAppearance(GENERIC_HID);
     pAdvertising->addServiceUUID(BleCompositeHIDInstance->_hid->hidService()->getUUID());
     pAdvertising->start();
     BleCompositeHIDInstance->_hid->setBatteryLevel(BleCompositeHIDInstance->batteryLevel);
