@@ -5,6 +5,7 @@
 #include "NimBLECharacteristic.h"
 #include <MouseConfiguration.h>
 #include <BaseCompositeDevice.h>
+#include <mutex>
 
 class MouseDevice : public BaseCompositeDevice {
 private:
@@ -31,7 +32,13 @@ public:
     void mouseRelease(uint8_t button = MOUSE_LOGICAL_LEFT_BUTTON);
     void mouseMove(signed char x, signed char y, signed char scrollX = 0, signed char scrollY = 0);
     
-    void sendMouseReport();
+    void sendMouseReport(bool defer = false);
+
+private:
+    void sendMouseReportImpl();
+
+    // Threading
+    std::mutex _mutex;
 };
 
 #endif

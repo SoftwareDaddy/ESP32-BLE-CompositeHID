@@ -20,7 +20,8 @@ GamepadConfiguration::GamepadConfiguration() :
     _axesMax(0x7FFF),
     _simulationMin(0x0000),
     _simulationMax(0x7FFF),
-    _includeRumble(false)
+    _includeRumble(false),
+    _includePlayerIndicators(false)
 {
 }
 
@@ -481,6 +482,40 @@ size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize
             memcpy(&tempHidReportDescriptor[reportSize], &pidReportDescriptor[0], sizeof(pidReportDescriptor));
             reportSize += sizeof(pidReportDescriptor) / sizeof(pidReportDescriptor[0]);
         }
+
+        if(this->getIncludePlayerIndicators()){
+            tempHidReportDescriptor[reportSize++] = COLLECTION(1); // Physical collection
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            tempHidReportDescriptor[reportSize++] = REPORT_ID(1); // Report ID
+            tempHidReportDescriptor[reportSize++] = this->getReportId();
+
+            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); // Usage page - LED usage page
+            tempHidReportDescriptor[reportSize++] = 0x08;
+
+            tempHidReportDescriptor[reportSize++] = USAGE_MINIMUM(1); // Usage minimum
+            tempHidReportDescriptor[reportSize++] = 0x61;
+
+            tempHidReportDescriptor[reportSize++] = USAGE_MAXIMUM(1); // Usage maximum
+            tempHidReportDescriptor[reportSize++] = 0x68;
+
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MINIMUM(1); // Logical minimum
+            tempHidReportDescriptor[reportSize++] = 0x00;
+
+            tempHidReportDescriptor[reportSize++] = LOGICAL_MAXIMUM(1); // Logical maximum
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
+            tempHidReportDescriptor[reportSize++] = REPORT_COUNT(1); // Report count - 8 bits
+            tempHidReportDescriptor[reportSize++] = 0x08;
+
+            tempHidReportDescriptor[reportSize++] = REPORT_SIZE(1);  // Report size
+            tempHidReportDescriptor[reportSize++] = 0x01;
+
+            tempHidReportDescriptor[reportSize++] = HIDOUTPUT(1); // Output
+            tempHidReportDescriptor[reportSize++] = 0x02;
+
+            tempHidReportDescriptor[reportSize++] = END_COLLECTION(0); // End physical collection
+        }
     }
     
     // End gamepad collection
@@ -583,8 +618,10 @@ bool GamepadConfiguration::getIncludeBrake() const { return _whichSimulationCont
 bool GamepadConfiguration::getIncludeSteering() const { return _whichSimulationControls[STEERING]; }
 const bool *GamepadConfiguration::getWhichSimulationControls() const { return _whichSimulationControls; }
 bool GamepadConfiguration::getIncludeRumble() const { return _includeRumble; }
+bool GamepadConfiguration::getIncludePlayerIndicators() const { return _includePlayerIndicators; }
 
 void GamepadConfiguration::setIncludeRumble(bool value) { _includeRumble = value; }
+void GamepadConfiguration::setIncludePlayerIndicators(bool value) { _includePlayerIndicators = value; }
 
 void GamepadConfiguration::setWhichSpecialButtons(bool start, bool select, bool menu, bool home, bool back, bool volumeInc, bool volumeDec, bool volumeMute)
 {

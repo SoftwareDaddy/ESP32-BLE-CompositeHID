@@ -14,6 +14,7 @@
 #include "BaseCompositeDevice.h"
 
 #include <vector>
+#include "SafeQueue.hpp"
 
 class BleCompositeHID
 {
@@ -25,9 +26,11 @@ public:
     void end();
 
     void setBatteryLevel(uint8_t level);
-
     void addDevice(BaseCompositeDevice* device);
     bool isConnected();
+
+    void queueDeviceDeferredReport(std::function<void()> && reportFunc);
+    void sendDeferredReports();
 
     uint8_t batteryLevel;
     std::string deviceManufacturer;
@@ -38,12 +41,15 @@ protected:
 
 private:
     static void taskServer(void *pvParameter);
+    static void timedSendDeferredReports(void *pvParameter);
 
     BLEHostConfiguration _configuration;
     BleConnectionStatus* _connectionStatus;
     NimBLEHIDDevice* _hid;
 
     std::vector<BaseCompositeDevice*> _devices;
+    SafeQueue<std::function<void()>> _deferredReports;
+    TaskHandle_t _autoSendTaskHandle;
 };
 
 #endif // CONFIG_BT_NIMBLE_ROLE_PERIPHERAL

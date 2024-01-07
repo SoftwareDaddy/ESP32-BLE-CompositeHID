@@ -4,6 +4,8 @@
 #include <NimBLECharacteristic.h>
 #include <GamepadConfiguration.h>
 #include <BaseCompositeDevice.h>
+#include <Callback.h>
+#include <mutex>
 
 // Forwards
 class GamepadDevice;
@@ -26,6 +28,7 @@ private:
 
 class GamepadDevice : public BaseCompositeDevice
 {
+    friend class GamepadCallbacks;
 private:
     GamepadConfiguration _config;
 
@@ -108,14 +111,31 @@ public:
     void setBrake(int16_t brake = 0);
     void setSteering(int16_t steering = 0);
     void setSimulationControls(int16_t rudder = 0, int16_t throttle = 0, int16_t accelerator = 0, int16_t brake = 0, int16_t steering = 0);
-    void sendGamepadReport();
+    
     bool isPressed(uint8_t b = BUTTON_1); // check BUTTON_1 by default
     bool isConnected(void);
     void resetButtons();
-    void setBatteryLevel(uint8_t level);
+
+    void sendGamepadReport(bool defer = false);
+private:
+    void sendGamepadReportImp();
+
+
+    // Output properties
+    uint8_t getPlayerIndicator();
+
+    // callbacks
+    Signal<uint8_t> onPlayerIndicatorChanged;
+
 
 private:
     uint8_t specialButtonBitPosition(uint8_t specialButton);
+
+    // Output properties
+    uint8_t playerIndicator;
+
+    // Threaded access
+    std::mutex _mutex;
 
     NimBLECharacteristic* _setEffectCharacteristic;
     NimBLECharacteristic* _setEnvelopeCharacteristic;

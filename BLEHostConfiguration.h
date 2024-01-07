@@ -42,6 +42,17 @@ public:
     void setSerialNumber(const char *value);
     void setFirmwareRevision(const char *value);
     void setHardwareRevision(const char *value);
+
+    // Threaded auto send
+    void setDeferSendRate(uint32_t value);
+    uint32_t getDeferSendRate() const;
+
+    void setThreadedAutoSend(bool value);
+    bool getThreadedAutoSend() const;
+
+private:
+    uint32_t _deferSendRate;
+    bool _threadedAutoSend;
 };
 
 #endif

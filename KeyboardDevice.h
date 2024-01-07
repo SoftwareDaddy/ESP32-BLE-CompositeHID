@@ -6,6 +6,7 @@
 #include <KeyboardConfiguration.h>
 #include <BaseCompositeDevice.h>
 #include <Callback.h>
+#include <mutex>
 
 struct KeyboardInputReport {
     uint8_t modifiers;
@@ -77,11 +78,18 @@ public:
     void modifierKeyRelease(uint8_t modifier);
     void mediaKeyPress(uint32_t mediaKey);
     void mediaKeyRelease(uint32_t mediaKey);
-    
-    void sendKeyReport();
-    void sendMediaKeyReport();
 
     Signal<KeyboardOutputReport> onLED;
+
+    void sendKeyReport(bool defer = false);
+    void sendMediaKeyReport(bool defer = false);
+
+private:
+    void sendKeyReportImpl();
+    void sendMediaKeyReportImpl();
+
+    // Threading
+    std::mutex _mutex;
 };
 
 #endif

@@ -10,7 +10,9 @@ BLEHostConfiguration::BLEHostConfiguration() :
     _serialNumber("0123456789"),
     _firmwareRevision("1.0.0"),
     _hardwareRevision("1.0.0"),
-    _systemID("")
+    _systemID(""),
+    _deferSendRate(240),
+    _threadedAutoSend(false)
 {               
 }
 
@@ -36,3 +38,9 @@ void BLEHostConfiguration::setSoftwareRevision(const char *value) { _softwareRev
 void BLEHostConfiguration::setSerialNumber(const char *value) { _serialNumber = std::string(value); }
 void BLEHostConfiguration::setFirmwareRevision(const char *value) { _firmwareRevision = std::string(value); }
 void BLEHostConfiguration::setHardwareRevision(const char *value) { _hardwareRevision = std::string(value); }
+
+void BLEHostConfiguration::setDeferSendRate(uint32_t value) { _deferSendRate = value; }
+uint32_t BLEHostConfiguration::getDeferSendRate() const { return _deferSendRate; }
+
+void BLEHostConfiguration::setThreadedAutoSend(bool value) { _threadedAutoSend = value; }
+bool BLEHostConfiguration::getThreadedAutoSend() const { return _threadedAutoSend; }

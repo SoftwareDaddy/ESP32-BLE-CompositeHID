@@ -16,10 +16,13 @@ public:
     BaseCompositeDeviceConfiguration(uint8_t reportId);
 
     bool getAutoReport() const;
-    uint8_t getReportId() const;
-
     void setAutoReport(bool value);
+
+    uint8_t getReportId() const;
     void setHidReportId(uint8_t value);
+    
+    void setAutoDefer(bool value);
+    bool getAutoDefer() const;
 
     virtual const char* getDeviceName() const;
     virtual BLEHostConfiguration getIdealHostConfiguration() const;
@@ -28,6 +31,7 @@ public:
 
 private:
     bool _autoReport;
+    bool _autoDefer;
     uint8_t _reportId;
 };
 
@@ -42,6 +46,7 @@ public:
     BleCompositeHID* getParent();
 
 protected:
+    void queueDeferredReport(std::function<void()> && reportFunc);
     void setCharacteristics(NimBLECharacteristic* input, NimBLECharacteristic* output);
     NimBLECharacteristic* getInput();
     NimBLECharacteristic* getOutput();

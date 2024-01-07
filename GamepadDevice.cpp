@@ -16,6 +16,24 @@ GamepadCallbacks::GamepadCallbacks(GamepadDevice* device) : _device(device)
 void GamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
 {
     ESP_LOGD(LOG_TAG, "GamepadCallbacks::onWrite, value: %s", pCharacteristic->getValue().c_str());
+    
+    uint8_t playerIndicatorBitflags = pCharacteristic->getValue<uint8_t>();
+    uint8_t playerIndicator = 0;
+    
+    // Iterate over each bit position
+    for (int i = 0; i < 8; ++i) {
+        // Check if the bit is set (1)
+        if ((playerIndicatorBitflags & (1 << i)) != 0) {
+            // If the bit is set, add the corresponding decimal value
+            playerIndicator += (1 << i);
+        }
+    }
+
+    // Ensure the result is in the range 1 to 8
+    playerIndicator = (playerIndicator % 8) + 1;
+
+    _device->playerIndicator = playerIndicator;
+    _device->onPlayerIndicatorChanged.fire(playerIndicator);
 }
 
 void GamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic)
@@ -126,10 +144,12 @@ GamepadDevice::~GamepadDevice()
 void GamepadDevice::init(NimBLEHIDDevice* hid)
 {
     // Create input characteristic to send events to the computer
-    auto input = hid->inputReport(GAMEPAD_REPORT_ID);
+    auto input = hid->inputReport(_config.getReportId());
 
     // Create output characteristic to handle events coming from the computer
-    auto output = hid->outputReport(FORCE_FEEDBACK_REPORT_ID);
+    auto output = hid->outputReport(_config.getReportId());
+
+    // Set callbacks
     _callbacks = new GamepadCallbacks(this);
     output->setCallbacks(_callbacks);
 
@@ -143,6 +163,7 @@ const BaseCompositeDeviceConfiguration* GamepadDevice::getDeviceConfig() const
 
 void GamepadDevice::resetButtons()
 {
+    std::lock_guard<std::mutex> lock(_mutex);
     memset(&_buttons, 0, sizeof(_buttons));
 }
 
@@ -181,14 +202,17 @@ void GamepadDevice::setAxes(int16_t x, int16_t y, int16_t z, int16_t rZ, int16_t
         slider2 = -32767;
     }
 
-    _x = x;
-    _y = y;
-    _z = z;
-    _rZ = rZ;
-    _rX = rX;
-    _rY = rY;
-    _slider1 = slider1;
-    _slider2 = slider2;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _x = x;
+        _y = y;
+        _z = z;
+        _rZ = rZ;
+        _rX = rX;
+        _rY = rY;
+        _slider1 = slider1;
+        _slider2 = slider2;
+    }
 
     if (_config.getAutoReport())
     {
@@ -219,11 +243,14 @@ void GamepadDevice::setSimulationControls(int16_t rudder, int16_t throttle, int1
         steering = -32767;
     }
 
-    _rudder = rudder;
-    _throttle = throttle;
-    _accelerator = accelerator;
-    _brake = brake;
-    _steering = steering;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rudder = rudder;
+        _throttle = throttle;
+        _accelerator = accelerator;
+        _brake = brake;
+        _steering = steering;
+    }
 
     if (_config.getAutoReport())
     {
@@ -233,10 +260,13 @@ void GamepadDevice::setSimulationControls(int16_t rudder, int16_t throttle, int1
 
 void GamepadDevice::setHats(signed char hat1, signed char hat2, signed char hat3, signed char hat4)
 {
-    _hat1 = hat1;
-    _hat2 = hat2;
-    _hat3 = hat3;
-    _hat4 = hat4;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _hat1 = hat1;
+        _hat2 = hat2;
+        _hat3 = hat3;
+        _hat4 = hat4;
+    }
 
     if (_config.getAutoReport())
     {
@@ -255,8 +285,11 @@ void GamepadDevice::setSliders(int16_t slider1, int16_t slider2)
         slider2 = -32767;
     }
 
-    _slider1 = slider1;
-    _slider2 = slider2;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _slider1 = slider1;
+        _slider2 = slider2;
+    }
 
     if (_config.getAutoReport())
     {
@@ -274,6 +307,7 @@ void GamepadDevice::press(uint8_t b)
 
     if (result != _buttons[index])
     {
+        std::lock_guard<std::mutex> lock(_mutex);
         _buttons[index] = result;
     }
 
@@ -293,6 +327,7 @@ void GamepadDevice::release(uint8_t b)
 
     if (result != _buttons[index])
     {
+        std::lock_guard<std::mutex> lock(_mutex);
         _buttons[index] = result;
     }
 
@@ -325,6 +360,7 @@ void GamepadDevice::pressSpecialButton(uint8_t b)
 
     if (result != _specialButtons)
     {
+        std::lock_guard<std::mutex> lock(_mutex);
         _specialButtons = result;
     }
 
@@ -344,6 +380,7 @@ void GamepadDevice::releaseSpecialButton(uint8_t b)
 
     if (result != _specialButtons)
     {
+        std::lock_guard<std::mutex> lock(_mutex);
         _specialButtons = result;
     }
 
@@ -444,8 +481,11 @@ void GamepadDevice::setLeftThumb(int16_t x, int16_t y)
         y = -32767;
     }
 
-    _x = x;
-    _y = y;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _x = x;
+        _y = y;
+    }
 
     if (_config.getAutoReport())
     {
@@ -464,8 +504,11 @@ void GamepadDevice::setRightThumb(int16_t z, int16_t rZ)
         rZ = -32767;
     }
 
-    _z = z;
-    _rZ = rZ;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _z = z;
+        _rZ = rZ;
+    }
 
     if (_config.getAutoReport())
     {
@@ -480,7 +523,10 @@ void GamepadDevice::setLeftTrigger(int16_t rX)
         rX = -32767;
     }
 
-    _rX = rX;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rX = rX;
+    }
 
     if (_config.getAutoReport())
     {
@@ -495,7 +541,10 @@ void GamepadDevice::setRightTrigger(int16_t rY)
         rY = -32767;
     }
 
-    _rY = rY;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rY = rY;
+    }
 
     if (_config.getAutoReport())
     {
@@ -514,8 +563,11 @@ void GamepadDevice::setTriggers(int16_t rX, int16_t rY)
         rY = -32767;
     }
 
-    _rX = rX;
-    _rY = rY;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rX = rX;
+        _rY = rY;
+    }
 
     if (_config.getAutoReport())
     {
@@ -525,7 +577,10 @@ void GamepadDevice::setTriggers(int16_t rX, int16_t rY)
 
 void GamepadDevice::setHat(signed char hat)
 {
-    _hat1 = hat;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _hat1 = hat;
+    }
 
     if (_config.getAutoReport())
     {
@@ -535,7 +590,10 @@ void GamepadDevice::setHat(signed char hat)
 
 void GamepadDevice::setHat1(signed char hat1)
 {
-    _hat1 = hat1;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _hat1 = hat1;
+    }
 
     if (_config.getAutoReport())
     {
@@ -545,7 +603,10 @@ void GamepadDevice::setHat1(signed char hat1)
 
 void GamepadDevice::setHat2(signed char hat2)
 {
-    _hat2 = hat2;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _hat2 = hat2;
+    }
 
     if (_config.getAutoReport())
     {
@@ -555,7 +616,10 @@ void GamepadDevice::setHat2(signed char hat2)
 
 void GamepadDevice::setHat3(signed char hat3)
 {
-    _hat3 = hat3;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _hat3 = hat3;
+    }
 
     if (_config.getAutoReport())
     {
@@ -565,7 +629,11 @@ void GamepadDevice::setHat3(signed char hat3)
 
 void GamepadDevice::setHat4(signed char hat4)
 {
-    _hat4 = hat4;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _hat4 = hat4;
+    }
+
 
     if (_config.getAutoReport())
     {
@@ -580,7 +648,10 @@ void GamepadDevice::setX(int16_t x)
         x = -32767;
     }
 
-    _x = x;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _x = x;
+    }
 
     if (_config.getAutoReport())
     {
@@ -595,7 +666,10 @@ void GamepadDevice::setY(int16_t y)
         y = -32767;
     }
 
-    _y = y;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _y = y;
+    }
 
     if (_config.getAutoReport())
     {
@@ -610,7 +684,10 @@ void GamepadDevice::setZ(int16_t z)
         z = -32767;
     }
 
-    _z = z;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _z = z;
+    }
 
     if (_config.getAutoReport())
     {
@@ -625,7 +702,10 @@ void GamepadDevice::setRZ(int16_t rZ)
         rZ = -32767;
     }
 
-    _rZ = rZ;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rZ = rZ;
+    }
 
     if (_config.getAutoReport())
     {
@@ -640,7 +720,10 @@ void GamepadDevice::setRX(int16_t rX)
         rX = -32767;
     }
 
-    _rX = rX;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rX = rX;
+    }
 
     if (_config.getAutoReport())
     {
@@ -655,7 +738,10 @@ void GamepadDevice::setRY(int16_t rY)
         rY = -32767;
     }
 
-    _rY = rY;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rY = rY;
+    }
 
     if (_config.getAutoReport())
     {
@@ -670,7 +756,10 @@ void GamepadDevice::setSlider(int16_t slider)
         slider = -32767;
     }
 
-    _slider1 = slider;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _slider1 = slider;
+    }
 
     if (_config.getAutoReport())
     {
@@ -685,7 +774,10 @@ void GamepadDevice::setSlider1(int16_t slider1)
         slider1 = -32767;
     }
 
-    _slider1 = slider1;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _slider1 = slider1;
+    }
 
     if (_config.getAutoReport())
     {
@@ -700,7 +792,10 @@ void GamepadDevice::setSlider2(int16_t slider2)
         slider2 = -32767;
     }
 
-    _slider2 = slider2;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _slider2 = slider2;
+    }
 
     if (_config.getAutoReport())
     {
@@ -715,7 +810,10 @@ void GamepadDevice::setRudder(int16_t rudder)
         rudder = -32767;
     }
 
-    _rudder = rudder;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _rudder = rudder;
+    }
 
     if (_config.getAutoReport())
     {
@@ -730,7 +828,10 @@ void GamepadDevice::setThrottle(int16_t throttle)
         throttle = -32767;
     }
 
-    _throttle = throttle;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _throttle = throttle;
+    }
 
     if (_config.getAutoReport())
     {
@@ -745,7 +846,10 @@ void GamepadDevice::setAccelerator(int16_t accelerator)
         accelerator = -32767;
     }
 
-    _accelerator = accelerator;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _accelerator = accelerator;
+    }
 
     if (_config.getAutoReport())
     {
@@ -760,7 +864,10 @@ void GamepadDevice::setBrake(int16_t brake)
         brake = -32767;
     }
 
-    _brake = brake;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _brake = brake;
+    }
 
     if (_config.getAutoReport())
     {
@@ -775,7 +882,10 @@ void GamepadDevice::setSteering(int16_t steering)
         steering = -32767;
     }
 
-    _steering = steering;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _steering = steering;
+    }
 
     if (_config.getAutoReport())
     {
@@ -794,7 +904,16 @@ bool GamepadDevice::isPressed(uint8_t b)
     return false;
 }
 
-void GamepadDevice::sendGamepadReport(void)
+void GamepadDevice::sendGamepadReport(bool defer)
+{
+    if(defer || _config.getAutoReport()){
+        queueDeferredReport(std::bind(&GamepadDevice::sendGamepadReportImp, this));
+    } else {
+        sendGamepadReportImp();
+    }
+}
+
+void GamepadDevice::sendGamepadReportImp()
 {
     auto input = getInput();
     auto parentDevice = this->getParent();
@@ -808,96 +927,101 @@ void GamepadDevice::sendGamepadReport(void)
     uint8_t currentReportIndex = 0;
     uint8_t m[_config.getDeviceReportSize()];
 
-    memset(&m, 0, sizeof(m));
-    memcpy(&m, &_buttons, sizeof(_buttons));
-    
-    currentReportIndex += _config.getButtonNumBytes();
+    {
+        // Lock the device input data
+        std::lock_guard<std::mutex> lock(_mutex);
 
-    if (_config.getTotalSpecialButtonCount() > 0)
-    {
-        m[currentReportIndex++] = _specialButtons;
-    }
+        memset(&m, 0, sizeof(m));
+        memcpy(&m, &_buttons, sizeof(_buttons));
+        
+        currentReportIndex += _config.getButtonNumBytes();
 
-    if (_config.getIncludeXAxis())
-    {
-        m[currentReportIndex++] = _x;
-        m[currentReportIndex++] = (_x >> 8);
-    }
-    if (_config.getIncludeYAxis())
-    {
-        m[currentReportIndex++] = _y;
-        m[currentReportIndex++] = (_y >> 8);
-    }
-    if (_config.getIncludeZAxis())
-    {
-        m[currentReportIndex++] = _z;
-        m[currentReportIndex++] = (_z >> 8);
-    }
-    if (_config.getIncludeRzAxis())
-    {
-        m[currentReportIndex++] = _rZ;
-        m[currentReportIndex++] = (_rZ >> 8);
-    }
-    if (_config.getIncludeRxAxis())
-    {
-        m[currentReportIndex++] = _rX;
-        m[currentReportIndex++] = (_rX >> 8);
-    }
-    if (_config.getIncludeRyAxis())
-    {
-        m[currentReportIndex++] = _rY;
-        m[currentReportIndex++] = (_rY >> 8);
-    }
-
-    if (_config.getIncludeSlider1())
-    {
-        m[currentReportIndex++] = _slider1;
-        m[currentReportIndex++] = (_slider1 >> 8);
-    }
-    if (_config.getIncludeSlider2())
-    {
-        m[currentReportIndex++] = _slider2;
-        m[currentReportIndex++] = (_slider2 >> 8);
-    }
-
-    if (_config.getIncludeRudder())
-    {
-        m[currentReportIndex++] = _rudder;
-        m[currentReportIndex++] = (_rudder >> 8);
-    }
-    if (_config.getIncludeThrottle())
-    {
-        m[currentReportIndex++] = _throttle;
-        m[currentReportIndex++] = (_throttle >> 8);
-    }
-    if (_config.getIncludeAccelerator())
-    {
-        m[currentReportIndex++] = _accelerator;
-        m[currentReportIndex++] = (_accelerator >> 8);
-    }
-    if (_config.getIncludeBrake())
-    {
-        m[currentReportIndex++] = _brake;
-        m[currentReportIndex++] = (_brake >> 8);
-    }
-    if (_config.getIncludeSteering())
-    {
-        m[currentReportIndex++] = _steering;
-        m[currentReportIndex++] = (_steering >> 8);
-    }
-
-    if (_config.getHatSwitchCount() > 0)
-    {
-        signed char hats[4];
-
-        hats[0] = _hat1;
-        hats[1] = _hat2;
-        hats[2] = _hat3;
-        hats[3] = _hat4;
-
-        for (int currentHatIndex = _config.getHatSwitchCount() - 1; currentHatIndex >= 0; currentHatIndex--)
+        if (_config.getTotalSpecialButtonCount() > 0)
         {
-            m[currentReportIndex++] = hats[currentHatIndex];
+            m[currentReportIndex++] = _specialButtons;
+        }
+
+        if (_config.getIncludeXAxis())
+        {
+            m[currentReportIndex++] = _x;
+            m[currentReportIndex++] = (_x >> 8);
+        }
+        if (_config.getIncludeYAxis())
+        {
+            m[currentReportIndex++] = _y;
+            m[currentReportIndex++] = (_y >> 8);
+        }
+        if (_config.getIncludeZAxis())
+        {
+            m[currentReportIndex++] = _z;
+            m[currentReportIndex++] = (_z >> 8);
+        }
+        if (_config.getIncludeRzAxis())
+        {
+            m[currentReportIndex++] = _rZ;
+            m[currentReportIndex++] = (_rZ >> 8);
+        }
+        if (_config.getIncludeRxAxis())
+        {
+            m[currentReportIndex++] = _rX;
+            m[currentReportIndex++] = (_rX >> 8);
+        }
+        if (_config.getIncludeRyAxis())
+        {
+            m[currentReportIndex++] = _rY;
+            m[currentReportIndex++] = (_rY >> 8);
+        }
+
+        if (_config.getIncludeSlider1())
+        {
+            m[currentReportIndex++] = _slider1;
+            m[currentReportIndex++] = (_slider1 >> 8);
+        }
+        if (_config.getIncludeSlider2())
+        {
+            m[currentReportIndex++] = _slider2;
+            m[currentReportIndex++] = (_slider2 >> 8);
+        }
+
+        if (_config.getIncludeRudder())
+        {
+            m[currentReportIndex++] = _rudder;
+            m[currentReportIndex++] = (_rudder >> 8);
+        }
+        if (_config.getIncludeThrottle())
+        {
+            m[currentReportIndex++] = _throttle;
+            m[currentReportIndex++] = (_throttle >> 8);
+        }
+        if (_config.getIncludeAccelerator())
+        {
+            m[currentReportIndex++] = _accelerator;
+            m[currentReportIndex++] = (_accelerator >> 8);
+        }
+        if (_config.getIncludeBrake())
+        {
+            m[currentReportIndex++] = _brake;
+            m[currentReportIndex++] = (_brake >> 8);
+        }
+        if (_config.getIncludeSteering())
+        {
+            m[currentReportIndex++] = _steering;
+            m[currentReportIndex++] = (_steering >> 8);
+        }
+
+        if (_config.getHatSwitchCount() > 0)
+        {
+            signed char hats[4];
+
+            hats[0] = _hat1;
+            hats[1] = _hat2;
+            hats[2] = _hat3;
+            hats[3] = _hat4;
+
+            for (int currentHatIndex = _config.getHatSwitchCount() - 1; currentHatIndex >= 0; currentHatIndex--)
+            {
+                m[currentReportIndex++] = hats[currentHatIndex];
+            }
         }
     }
 

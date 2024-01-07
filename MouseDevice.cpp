@@ -35,12 +35,14 @@ const BaseCompositeDeviceConfiguration* MouseDevice::getDeviceConfig() const
 
 void MouseDevice::resetButtons()
 {
+    std::lock_guard<std::mutex> lock(_mutex);
     memset(&_mouseButtons, 0, sizeof(_mouseButtons));
 }
 
 // Mouse
 void MouseDevice::mouseClick(uint8_t button)
 {
+    // No-op
     // TODO: Send two reports one after the other for convience? Can't be both pressed and not pressed in a bitflag
 }
 
@@ -54,6 +56,7 @@ void MouseDevice::mousePress(uint8_t button)
 
     if (result != _mouseButtons[index])
     {
+        std::lock_guard<std::mutex> lock(_mutex);
         _mouseButtons[index] = result;
     }
 
@@ -73,6 +76,7 @@ void MouseDevice::mouseRelease(uint8_t button)
 
     if (result != _mouseButtons[index])
     {
+        std::lock_guard<std::mutex> lock(_mutex);
         _mouseButtons[index] = result;
     }
 
@@ -101,10 +105,13 @@ void MouseDevice::mouseMove(signed char x, signed char y, signed char scrollX, s
         scrollY = -126;
     }
 
-    _mouseX = x;
-    _mouseY = y;
-    _mouseWheel = scrollY;
-    _mouseHWheel = scrollX;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _mouseX = x;
+        _mouseY = y;
+        _mouseWheel = scrollY;
+        _mouseHWheel = scrollX;
+    }
 
     if (_config.getAutoReport())
     {
@@ -112,7 +119,19 @@ void MouseDevice::mouseMove(signed char x, signed char y, signed char scrollX, s
     }
 }
 
-void MouseDevice::sendMouseReport()
+void MouseDevice::sendMouseReport(bool defer)
+{
+    if (defer || _config.getAutoDefer())
+    {
+        queueDeferredReport(std::bind(&MouseDevice::sendMouseReportImpl, this));
+    }
+    else
+    {
+        sendMouseReportImpl();
+    }
+}
+
+void MouseDevice::sendMouseReportImpl()
 {
     auto input = getInput();
     auto parentDevice = this->getParent();
@@ -126,17 +145,21 @@ void MouseDevice::sendMouseReport()
     uint8_t mouse_report[_config.getDeviceReportSize()];
     uint8_t currentReportIndex = 0;
 
-    memset(&mouse_report, 0, sizeof(mouse_report));
-    memcpy(&mouse_report, &_mouseButtons, sizeof(_mouseButtons));
-    currentReportIndex += _config.getMouseButtonNumBytes();
+    { 
+        std::lock_guard<std::mutex> lock(_mutex);
+        
+        memset(&mouse_report, 0, sizeof(mouse_report));
+        memcpy(&mouse_report, &_mouseButtons, sizeof(_mouseButtons));
+        currentReportIndex += _config.getMouseButtonNumBytes();
 
-    // TODO: Make dynamic based on axis counts
-    if (_config.getMouseAxisCount() > 0)
-    {
-        mouse_report[currentReportIndex++] = _mouseX;
-        mouse_report[currentReportIndex++] = _mouseY;
-        mouse_report[currentReportIndex++] = _mouseWheel;
-        mouse_report[currentReportIndex++] = _mouseHWheel;
+        // TODO: Make dynamic based on axis counts
+        if (_config.getMouseAxisCount() > 0)
+        {
+            mouse_report[currentReportIndex++] = _mouseX;
+            mouse_report[currentReportIndex++] = _mouseY;
+            mouse_report[currentReportIndex++] = _mouseWheel;
+            mouse_report[currentReportIndex++] = _mouseHWheel;
+        }
     }
 
     input->setValue(mouse_report, sizeof(mouse_report));

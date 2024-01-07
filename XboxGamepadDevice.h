@@ -3,6 +3,7 @@
 
 #include <NimBLECharacteristic.h>
 #include <Callback.h>
+#include <mutex>
 
 #include "BLEHostConfiguration.h"
 #include "BaseCompositeDevice.h"
@@ -133,15 +134,19 @@ public:
     void pressShare();
     void releaseShare();
     
-    void sendGamepadReport();
-
+    void sendGamepadReport(bool defer = false);
 
 private:
+    void sendGamepadReportImpl();
+
     XboxGamepadInputReportData _inputReport;
 
     NimBLECharacteristic* _extra_input;
     XboxGamepadCallbacks* _callbacks;
     XboxGamepadDeviceConfiguration* _config;
+
+    // Threading
+    std::mutex _mutex;
 };
 
 #endif // XBOX_GAMEPAD_DEVICE_H

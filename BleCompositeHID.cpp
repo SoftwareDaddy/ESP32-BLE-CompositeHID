@@ -100,12 +100,25 @@ void BleCompositeHID::begin(const BLEHostConfiguration& config)
 	high = highByte(guidVersion);
 	low = lowByte(guidVersion);
 	guidVersion = low << 8 | high;
-
+    
+    // Start BLE server
     xTaskCreate(this->taskServer, "server", 20000, (void *)this, 5, NULL);
 }
 
 void BleCompositeHID::end(void)
 {
+    vTaskDelete(this->_autoSendTaskHandle);
+}
+
+void BleCompositeHID::timedSendDeferredReports(void *pvParameter)
+{
+    BleCompositeHID *BleCompositeHIDInstance = (BleCompositeHID *)pvParameter;
+    while(true){
+        if(BleCompositeHIDInstance->_configuration.getDeferSendRate() > 0)
+            vTaskDelay((1000 / BleCompositeHIDInstance->_configuration.getDeferSendRate()) / portTICK_PERIOD_MS);
+        
+        BleCompositeHIDInstance->sendDeferredReports();
+    }
 }
 
 void BleCompositeHID::addDevice(BaseCompositeDevice *device)
@@ -135,6 +148,22 @@ void BleCompositeHID::setBatteryLevel(uint8_t level)
         // {
         //     // TODO: Send report?
         // }
+    }
+}
+
+void BleCompositeHID::queueDeviceDeferredReport(std::function<void()> && reportFunc)
+{
+    this->_deferredReports.Produce(std::forward<std::function<void()>>(reportFunc));
+}
+
+void BleCompositeHID::sendDeferredReports()
+{
+    if (this->_hid)
+    {
+        std::function<void()> reportFunc;
+        while(this->_deferredReports.Consume(reportFunc)){
+            reportFunc();
+        }
     }
 }
 
@@ -250,6 +279,11 @@ void BleCompositeHID::taskServer(void *pvParameter)
 
     // Update battery
     BleCompositeHIDInstance->_hid->setBatteryLevel(BleCompositeHIDInstance->batteryLevel);
+
+    // Start timed auto send for deferred reports
+    if(BleCompositeHIDInstance->_configuration.getThreadedAutoSend()){
+        xTaskCreate(BleCompositeHIDInstance->timedSendDeferredReports, "autoSend", 20000, (void *)BleCompositeHIDInstance, 5, &BleCompositeHIDInstance->_autoSendTaskHandle);
+    }
 
     // Wait to let the server start up
     vTaskDelay(portMAX_DELAY);

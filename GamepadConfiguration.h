@@ -307,6 +307,7 @@ public:
     int16_t getSimulationMin() const;
     int16_t getSimulationMax() const;
     bool getIncludeRumble() const;
+    bool getIncludePlayerIndicators() const;
 
     void setControllerType(uint8_t controllerType);
     void setButtonCount(uint16_t value);
@@ -342,6 +343,7 @@ public:
     void setSimulationMax(int16_t value);
 
     void setIncludeRumble(bool value);
+    void setIncludePlayerIndicators(bool value);
 
 private:
     uint8_t getButtonNumPaddingBits() const;
@@ -362,6 +364,7 @@ private:
     int16_t _simulationMin;
     int16_t _simulationMax;
     bool _includeRumble;
+    bool _includePlayerIndicators;
 };
 
 #endif
