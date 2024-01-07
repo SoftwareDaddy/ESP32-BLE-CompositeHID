@@ -43,12 +43,13 @@ public:
     void setFirmwareRevision(const char *value);
     void setHardwareRevision(const char *value);
 
-    // Threaded auto send
-    void setDeferSendRate(uint32_t value);
-    uint32_t getDeferSendRate() const;
+    // Set how quickly the auto-send should send queued reports. 
+    // A value of 0 will send reports as soon as they are queued.
+    void setAutoSendRate(uint32_t frequency);
+    uint32_t getAutoSendRate() const;
 
-    void setThreadedAutoSend(bool value);
-    bool getThreadedAutoSend() const;
+    void setAutoSendActive(bool value);
+    bool getAutoSendActive() const;
 
 private:
     uint32_t _deferSendRate;
