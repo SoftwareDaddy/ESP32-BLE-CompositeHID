@@ -56,8 +56,8 @@ void setup() {
     // We can also let our composite HID device send reports at a regular interval.
     // This works by creating a background task that will periodically send all queued reports.
     BLEHostConfiguration config;
-    config.setAutoSendRate(240);
-    config.setAutoSendActive(true);
+    config.setQueueSendRate(240);
+    config.setQueuedSending(true);
 
     // Start the composite HID device to broadcast HID reports
     compositeHID.begin(config);
@@ -101,9 +101,10 @@ void loop() {
             }
         }
 
-        // If instead of using the auto send feature, you can call the sendDeferredReports() function
-        // to send all queued reports manually.
+        // Instead of using the queued send feature, you can call the sendDeferredReports() function
+        // to send all queued reports manually. Uncomment the next line to enable.
         //compositeHID.sendDeferredReports();
+        
         lastReportTime = currentTime;
         delay(2);
     }

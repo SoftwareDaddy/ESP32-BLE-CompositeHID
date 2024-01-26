@@ -39,8 +39,8 @@ void BLEHostConfiguration::setSerialNumber(const char *value) { _serialNumber = 
 void BLEHostConfiguration::setFirmwareRevision(const char *value) { _firmwareRevision = std::string(value); }
 void BLEHostConfiguration::setHardwareRevision(const char *value) { _hardwareRevision = std::string(value); }
 
-void BLEHostConfiguration::setAutoSendRate(uint32_t value) { _deferSendRate = value; }
-uint32_t BLEHostConfiguration::getAutoSendRate() const { return _deferSendRate; }
+void BLEHostConfiguration::setQueueSendRate(uint32_t value) { _deferSendRate = value; }
+uint32_t BLEHostConfiguration::getQueueSendRate() const { return _deferSendRate; }
 
-void BLEHostConfiguration::setAutoSendActive(bool value) { _threadedAutoSend = value; }
-bool BLEHostConfiguration::getAutoSendActive() const { return _threadedAutoSend; }
+void BLEHostConfiguration::setQueuedSending(bool value) { _threadedAutoSend = value; }
+bool BLEHostConfiguration::getQueuedSending() const { return _threadedAutoSend; }
