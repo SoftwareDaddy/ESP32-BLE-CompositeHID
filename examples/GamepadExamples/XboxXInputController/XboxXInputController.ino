@@ -100,24 +100,24 @@ void testButtons(){
 }
 
 void testPads(){
-    uint16_t directions[] = {
-        XBOX_BUTTON_DPAD_NORTH,
-        XBOX_BUTTON_DPAD_NORTHEAST,
-        XBOX_BUTTON_DPAD_EAST,
-        XBOX_BUTTON_DPAD_SOUTHEAST,
-        XBOX_BUTTON_DPAD_SOUTH,
-        XBOX_BUTTON_DPAD_SOUTHWEST,
-        XBOX_BUTTON_DPAD_WEST,
-        XBOX_BUTTON_DPAD_NORTHWEST
+    XboxDpadFlags directions[] = {
+        XboxDpadFlags::NORTH,
+        XboxDpadFlags((uint8_t)XboxDpadFlags::NORTH | (uint8_t)XboxDpadFlags::EAST),
+        XboxDpadFlags::EAST,
+        XboxDpadFlags((uint8_t)XboxDpadFlags::EAST | (uint8_t)XboxDpadFlags::SOUTH),
+        XboxDpadFlags::SOUTH,
+        XboxDpadFlags((uint8_t)XboxDpadFlags::SOUTH | (uint8_t)XboxDpadFlags::WEST),
+        XboxDpadFlags::WEST,
+        XboxDpadFlags((uint8_t)XboxDpadFlags::WEST | (uint8_t)XboxDpadFlags::NORTH)
     };
 
-    for (uint16_t direction : directions)
+    for (XboxDpadFlags direction : directions)
     {
         Serial.println("Pressing DPad: " + String(direction));
-        gamepad->pressDPadDirection(direction);
+        gamepad->pressDPadDirectionFlag(direction);
         gamepad->sendGamepadReport();
         delay(500);
-        gamepad->releaseDPadDirection(direction);
+        gamepad->releaseDPad();
         gamepad->sendGamepadReport();
         delay(100);
     }
