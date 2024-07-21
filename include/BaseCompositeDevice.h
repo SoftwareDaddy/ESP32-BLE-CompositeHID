@@ -1,11 +1,13 @@
 #ifndef COMPOSITE_CONFIG_H
 #define COMPOSITE_CONFIG_H
 
-#include <Arduino.h>
 //#include <HIDKeyboardTypes.h>
 #include <NimBLECharacteristic.h>
 #include <NimBLEHIDDevice.h>
 #include "BLEHostConfiguration.h"
+
+#define lowByte(w) ((w) & 0xff)
+#define highByte(w) ((w) >> 8)
 
 // Forwards
 class BleCompositeHID;
@@ -14,7 +16,8 @@ class BaseCompositeDeviceConfiguration
 {
 public:
     BaseCompositeDeviceConfiguration(uint8_t reportId);
-
+    virtual ~BaseCompositeDeviceConfiguration(){};
+    
     bool getAutoReport() const;
     void setAutoReport(bool value);
 
@@ -40,6 +43,7 @@ class BaseCompositeDevice
 {
     friend class BleCompositeHID;
 public:
+    virtual ~BaseCompositeDevice() {};
     virtual void init(NimBLEHIDDevice* hid) = 0;
     virtual const BaseCompositeDeviceConfiguration* getDeviceConfig() const = 0;
     

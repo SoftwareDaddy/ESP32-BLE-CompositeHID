@@ -1,7 +1,6 @@
 #ifndef ESP32_BLE_HOST_CONFIG_H
 #define ESP32_BLE_HOST_CONFIG_H
 
-#include <Arduino.h>
 #include <string>
 //#include <HIDKeyboardTypes.h>
 

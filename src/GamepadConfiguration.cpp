@@ -240,7 +240,7 @@ size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize
         if (this->getAxisCount() > 0)
         {
             // USAGE_PAGE (Generic Desktop)
-            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); 0x05;
+            tempHidReportDescriptor[reportSize++] = USAGE_PAGE(1); //0x05;
             tempHidReportDescriptor[reportSize++] = 0x01; // Generic desktop controls
 
             // USAGE (Pointer)
@@ -414,7 +414,7 @@ size_t GamepadConfiguration::makeDeviceReport(uint8_t* buffer, size_t bufferSize
             }
 
             // INPUT (Data,Var,Abs)
-            tempHidReportDescriptor[reportSize++] = HIDINPUT(1); 0x81;
+            tempHidReportDescriptor[reportSize++] = HIDINPUT(1); //0x81;
             tempHidReportDescriptor[reportSize++] = 0x02;
 
             // END_COLLECTION (Physical)

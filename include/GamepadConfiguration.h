@@ -223,7 +223,7 @@
 #define VOLUME_MUTE_BUTTON 7
 
 
-static const uint8_t pidReportDescriptor[] PROGMEM= 
+static const uint8_t pidReportDescriptor[] =  
 {
     0x05, 0x0F,   //            (GLOBAL) USAGE_PAGE         0x000F Physical Interface Device Page 
     0x09, 0x21,   //            (LOCAL)  USAGE              0x000F0021 Set Effect Report (Logical Collection)  

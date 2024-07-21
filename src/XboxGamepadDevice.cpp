@@ -10,11 +10,21 @@
 static const char *LOG_TAG = "XboxGamepadDevice";
 #endif
 
+static int constrain(int input, int minVal, int maxVal) {
+    if (input < minVal) {
+        return minVal;
+    } else if (input > maxVal) {
+        return maxVal;
+    } else {
+        return input;
+    }
+}
+
 XboxGamepadCallbacks::XboxGamepadCallbacks(XboxGamepadDevice* device) : _device(device)
 {
 }
 
-void XboxGamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
+void XboxGamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo)
 {    
     // An example packet we might receive from XInput might look like 0x0300002500ff00ff
     XboxGamepadOutputReportData vibrationData = pCharacteristic->getValue<uint64_t>();
@@ -32,7 +42,7 @@ void XboxGamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
     _device->onVibrate.fire(vibrationData);
 }
 
-void XboxGamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic)
+void XboxGamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo)
 {
     ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onRead");
 }
@@ -42,23 +52,27 @@ void XboxGamepadCallbacks::onNotify(NimBLECharacteristic* pCharacteristic)
     ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onNotify");
 }
 
-void XboxGamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code)
+void XboxGamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, int code)
 {
-    ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onStatus, status: %d, code: %d", status, code);
+    ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onStatus, code: %d", code);
 }
 
+void XboxGamepadCallbacks::onSubscribe(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo, uint16_t subValue){
+    ESP_LOGD(LOG_TAG, "XboxGamepadCallbacks::onSubscribe");
+} 
+
 XboxGamepadDevice::XboxGamepadDevice() :
-    _config(new XboxOneSControllerDeviceConfiguration()),
     _extra_input(nullptr),
-    _callbacks(nullptr)
+    _callbacks(nullptr),
+    _config(new XboxOneSControllerDeviceConfiguration())
 {
 }
 
 // XboxGamepadDevice methods
 XboxGamepadDevice::XboxGamepadDevice(XboxGamepadDeviceConfiguration* config) :
-    _config(config),
     _extra_input(nullptr),
-    _callbacks(nullptr)
+    _callbacks(nullptr),
+    _config(config)
 {
 }
 
@@ -78,6 +92,8 @@ XboxGamepadDevice::~XboxGamepadDevice() {
         delete _config;
         _config = nullptr;
     }
+
+    
 }
 
 void XboxGamepadDevice::init(NimBLEHIDDevice* hid) {
@@ -100,7 +116,9 @@ const BaseCompositeDeviceConfiguration* XboxGamepadDevice::getDeviceConfig() con
 
 void XboxGamepadDevice::resetInputs() {
     std::lock_guard<std::mutex> lock(_mutex);
-    memset(&_inputReport, 0, sizeof(XboxGamepadInputReportData));
+    //memset(&_inputReport, 0, sizeof(XboxGamepadInputReportData));
+    // ***Need to check if this does anything
+    _inputReport = XboxGamepadInputReportData{};
 }
 
 void XboxGamepadDevice::press(uint16_t button) {

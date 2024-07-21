@@ -13,7 +13,7 @@ GamepadCallbacks::GamepadCallbacks(GamepadDevice* device) : _device(device)
 {
 }
 
-void GamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
+void GamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo)
 {
     ESP_LOGD(LOG_TAG, "GamepadCallbacks::onWrite, value: %s", pCharacteristic->getValue().c_str());
     
@@ -36,7 +36,7 @@ void GamepadCallbacks::onWrite(NimBLECharacteristic* pCharacteristic)
     _device->onPlayerIndicatorChanged.fire(playerIndicator);
 }
 
-void GamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic)
+void GamepadCallbacks::onRead(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo)
 {
     ESP_LOGD(LOG_TAG, "GamepadCallbacks::onRead");
 }
@@ -46,9 +46,14 @@ void GamepadCallbacks::onNotify(NimBLECharacteristic* pCharacteristic)
     ESP_LOGD(LOG_TAG, "GamepadCallbacks::onNotify");
 }
 
-void GamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code)
+void GamepadCallbacks::onStatus(NimBLECharacteristic* pCharacteristic, int code)
 {
-    ESP_LOGD(LOG_TAG, "GamepadCallbacks::onStatus, status: %d, code: %d", status, code);
+    ESP_LOGD(LOG_TAG, "GamepadCallbacks::onStatus, code: %d", code);
+}
+
+void GamepadCallbacks::onSubscribe(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo, uint16_t subValue)
+{
+    ESP_LOGD(LOG_TAG, "GamepadCallbacks::onSubscribe, subValue: %d", subValue);
 }
 
 GamepadDevice::GamepadDevice() : 

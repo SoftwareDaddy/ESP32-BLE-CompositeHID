@@ -41,10 +41,11 @@ class KeyboardCallbacks : public NimBLECharacteristicCallbacks {
 public:
     KeyboardCallbacks(KeyboardDevice* device);
 
-    void onWrite(NimBLECharacteristic* pCharacteristic) override;
-    void onRead(NimBLECharacteristic* pCharacteristic) override;
+    void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
+    void onRead(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
     void onNotify(NimBLECharacteristic* pCharacteristic) override;
-    void onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code) override;
+    void onStatus(NimBLECharacteristic* pCharacteristic, int code) override;
+    void onSubscribe(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo, uint16_t subValue) override;
 
 private:
     KeyboardDevice* _device;

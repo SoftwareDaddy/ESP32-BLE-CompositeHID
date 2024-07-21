@@ -16,10 +16,13 @@ class GamepadCallbacks : public NimBLECharacteristicCallbacks
 public:
     GamepadCallbacks(GamepadDevice* device);
 
-    void onWrite(NimBLECharacteristic* pCharacteristic) override;
-    void onRead(NimBLECharacteristic* pCharacteristic) override;
     void onNotify(NimBLECharacteristic* pCharacteristic) override;
-    void onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code) override;
+    // void onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code) override;
+
+    void onRead(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
+    void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
+    void onStatus(NimBLECharacteristic* pCharacteristic, int code) override;
+    void onSubscribe(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo, uint16_t subValue) override;
 
 private:
     GamepadDevice* _device;

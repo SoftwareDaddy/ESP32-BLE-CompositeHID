@@ -4,6 +4,7 @@
 #include <NimBLECharacteristic.h>
 #include <Callback.h>
 #include <mutex>
+#include <string.h>
 
 #include "BLEHostConfiguration.h"
 #include "BaseCompositeDevice.h"
@@ -71,10 +72,11 @@ class XboxGamepadCallbacks : public NimBLECharacteristicCallbacks
 public:
     XboxGamepadCallbacks(XboxGamepadDevice* device);
 
-    void onWrite(NimBLECharacteristic* pCharacteristic) override;
-    void onRead(NimBLECharacteristic* pCharacteristic) override;
+    void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
+    void onRead(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
     void onNotify(NimBLECharacteristic* pCharacteristic) override;
-    void onStatus(NimBLECharacteristic* pCharacteristic, Status status, int code) override;
+    void onStatus(NimBLECharacteristic* pCharacteristic, int code) override;
+    void onSubscribe(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo, uint16_t subValue) override; 
 
 private:
     XboxGamepadDevice* _device;
@@ -138,7 +140,7 @@ static uint8_t dPadDirectionToValue(XboxDpadFlags direction){
     return XBOX_BUTTON_DPAD_NONE;
 }
 
-static String dPadDirectionName(uint8_t direction){
+static std::string dPadDirectionName(uint8_t direction){
     if(direction == XBOX_BUTTON_DPAD_NORTH)
         return "NORTH";
     else if(direction == XBOX_BUTTON_DPAD_NORTHEAST)
@@ -163,7 +165,7 @@ class XboxGamepadDevice : public BaseCompositeDevice {
 public:
     XboxGamepadDevice();
     XboxGamepadDevice(XboxGamepadDeviceConfiguration* config);
-    ~XboxGamepadDevice();
+    ~XboxGamepadDevice() override;
 
     void init(NimBLEHIDDevice* hid) override;
     const BaseCompositeDeviceConfiguration* getDeviceConfig() const override;
@@ -191,16 +193,14 @@ public:
     void sendGamepadReport(bool defer = false);
 
 private:
-    void sendGamepadReportImpl();
-
-    XboxGamepadInputReportData _inputReport;
-
     NimBLECharacteristic* _extra_input;
     XboxGamepadCallbacks* _callbacks;
     XboxGamepadDeviceConfiguration* _config;
+    XboxGamepadInputReportData _inputReport;
 
     // Threading
     std::mutex _mutex;
-};
 
+    void sendGamepadReportImpl();
+};
 #endif // XBOX_GAMEPAD_DEVICE_H
