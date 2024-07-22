@@ -4,7 +4,7 @@
 #include <NimBLECharacteristic.h>
 #include <Callback.h>
 #include <mutex>
-#include <string.h>
+#include <string>
 
 #include "BLEHostConfiguration.h"
 #include "BaseCompositeDevice.h"

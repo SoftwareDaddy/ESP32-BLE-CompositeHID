@@ -10,6 +10,7 @@
             "includePath": [
                 "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/include",
                 "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/src",
+                "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/lib/Callback",
                 "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/lib/esp-nimble-cpp/src",
                 "C:/Users/micha/.platformio/packages/framework-espidf/components/riscv/include",
                 "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/.pio/build/esp32-h2-devkitm-1/config",
@@ -181,6 +182,7 @@
                 "path": [
                     "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/include",
                     "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/src",
+                    "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/lib/Callback",
                     "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/lib/esp-nimble-cpp/src",
                     "C:/Users/micha/.platformio/packages/framework-espidf/components/riscv/include",
                     "C:/Users/micha/Development/repos/ESP32-BLE-CompositeHID/.pio/build/esp32-h2-devkitm-1/config",

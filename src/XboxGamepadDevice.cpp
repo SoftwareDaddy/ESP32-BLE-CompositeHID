@@ -363,6 +363,7 @@ void XboxGamepadDevice::sendGamepadReportImpl(){
         std::lock_guard<std::mutex> lock(_mutex);
         size_t packedSize = sizeof(_inputReport);
         ESP_LOGD(LOG_TAG, "Sending gamepad report, size: %d", packedSize);
+        ESP_LOGD(LOG_TAG, "Data Format String []");
         input->setValue((uint8_t*)&_inputReport, packedSize);
     }
     input->notify();
